@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>void - your digital presence</title>
+    <meta name="description" content="Create your perfect digital identity. One link, infinite possibilities.">
+    
+    <meta property="og:title" content="void - your digital presence">
+    <meta property="og:description" content="Create your perfect digital identity">
+    <meta property="og:url" content="https://voidtags.xyz">
+    <meta property="og:type" content="website">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 50%, #1a0f2e 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, #2d1b69 0%, transparent 50%),
+                        radial-gradient(circle at 40% 80%, #1e3a8a 0%, transparent 50%),
+                        #0a0a0a;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .profile-section {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+        }
+
+        .username {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .bio {
+            font-size: 16px;
+            color: #a0a0a0;
+            margin-bottom: 20px;
+        }
+
+        .links-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .link-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            text-decoration: none;
+            color: #ffffff;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .link-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .link-item:hover {
+            transform: translateY(-4px);
+            border-color: rgba(102, 126, 234, 0.5);
+            box-shadow: 0 12px 32px rgba(102, 126, 234, 0.2);
+        }
+
+        .link-item:hover::before {
+            left: 100%;
+        }
+
+        .link-content {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .link-icon {
+            width: 24px;
+            height: 24px;
+            font-size: 20px;
+        }
+
+        .link-text {
+            flex: 1;
+        }
+
+        .link-title {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .link-description {
+            font-size: 14px;
+            color: #a0a0a0;
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .link-item:nth-child(1) { animation: fadeInUp 1s ease-out 0.1s both; }
+        .link-item:nth-child(2) { animation: fadeInUp 1s ease-out 0.2s both; }
+        .link-item:nth-child(3) { animation: fadeInUp 1s ease-out 0.3s both; }
+        .link-item:nth-child(4) { animation: fadeInUp 1s ease-out 0.4s both; }
+        .link-item:nth-child(5) { animation: fadeInUp 1s ease-out 0.5s both; }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 20px 16px;
+            }
+            
+            .username {
+                font-size: 28px;
+            }
+            
+            .avatar {
+                width: 100px;
+                height: 100px;
+                font-size: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="background"></div>
+    
+    <div class="container">
+        <div class="profile-section">
+            <div class="avatar">V</div>
+            <h1 class="username">void</h1>
+            <p class="bio">your digital universe starts here</p>
+        </div>
+
+        <div class="links-container">
+            <a href="#" class="link-item">
+                <div class="link-content">
+                    <div class="link-icon">🌐</div>
+                    <div class="link-text">
+                        <div class="link-title">Portfolio</div>
+                        <div class="link-description">check out my work</div>
+                    </div>
+                </div>
+            </a>
+
+            <a href="https://discord.gg/voidguild" class="link-item">
+                <div class="link-content">
+                    <div class="link-icon">💬</div>
+                    <div class="link-text">
+                        <div class="link-title">Discord</div>
+                        <div class="link-description">join the community</div>
+                    </div>
+                </div>
+            </a>
+
+            <a href="#" class="link-item">
+                <div class="link-content">
+                    <div class="link-icon">📱</div>
+                    <div class="link-text">
+                        <div class="link-title">Social</div>
+                        <div class="link-description">follow the journey</div>
+                    </div>
+                </div>
+            </a>
+
+            <a href="#" class="link-item">
+                <div class="link-content">
+                    <div class="link-icon">📧</div>
+                    <div class="link-text">
+                        <div class="link-title">Contact</div>
+                        <div class="link-description">let's connect</div>
+                    </div>
+                </div>
+            </a>
+
+            <a href="#" class="link-item">
+                <div class="link-content">
+                    <div class="link-icon">🎵</div>
+                    <div class="link-text">
+                        <div class="link-title">Music</div>
+                        <div class="link-description">current vibes</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="footer">
+            <p>powered by void.xyz</p>
+        </div>
+    </div>
+
+    <script>
+        // Custom smooth scroll implementation
+        const links = document.querySelectorAll('.link-item');
+        
+        links.forEach(link => {
+            link.addEventListener('click', (e) => {
+                // Add click animation
+                link.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    link.style.transform = '';
+                }, 150);
+            });
+        });
+
+        // Custom intersection observer for animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        });
+
+        // Observe all animated elements
+        document.querySelectorAll('.link-item').forEach(item => {
+            observer.observe(item);
+        });
+
+        // Custom particle effect (optional)
+        function createParticle() {
+            const particle = document.createElement('div');
+            particle.style.position = 'fixed';
+            particle.style.width = '2px';
+            particle.style.height = '2px';
+            particle.style.background = '#667eea';
+            particle.style.borderRadius = '50%';
+            particle.style.pointerEvents = 'none';
+            particle.style.left = Math.random() * window.innerWidth + 'px';
+            particle.style.top = '100vh';
+            particle.style.opacity = '0.5';
+            document.body.appendChild(particle);
+
+            const animation = particle.animate([
+                { transform: 'translateY(0)', opacity: 0.5 },
+                { transform: 'translateY(-100vh)', opacity: 0 }
+            ], {
+                duration: 3000 + Math.random() * 2000,
+                easing: 'linear'
+            });
+
+            animation.onfinish = () => particle.remove();
+        }
+
+        // Create particles occasionally
+        setInterval(createParticle, 2000);
+    </script>
+</body>
+</html>
