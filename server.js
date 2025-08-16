@@ -51,9 +51,6 @@ function createDeviceSession(uid, deviceFingerprint, rememberDevice = false) {
     // Clean up expired sessions
     cleanupExpiredSessions();
     
-    // Save to file
-    saveSessions();
-    
     return { sessionId, sessionToken };
 }
 
@@ -68,27 +65,23 @@ function validateDeviceSession(sessionId, sessionToken, deviceFingerprint) {
     // Check if session expired
     if (Date.now() > session.expiresAt) {
         deviceSessions.delete(sessionId);
-        saveSessions();
         return null;
     }
     
     // Check if device fingerprint matches
     if (session.deviceFingerprint !== deviceFingerprint) {
         deviceSessions.delete(sessionId);
-        saveSessions();
         return null;
     }
     
     // Check if session token matches
     if (session.sessionToken !== sessionToken) {
         deviceSessions.delete(sessionId);
-        saveSessions();
         return null;
     }
     
     // Update last used
     session.lastUsed = Date.now();
-    saveSessions();
     
     return session.uid;
 }
@@ -111,7 +104,6 @@ function cleanupExpiredSessions() {
 // Revoke device session (for logout)
 function revokeDeviceSession(sessionId) {
     deviceSessions.delete(sessionId);
-    saveSessions();
 }
 
 // Load API data
@@ -188,9 +180,6 @@ function createUserToken(uid) {
             activeTokens.delete(key);
         }
     }
-    
-    // Save to file
-    saveSessions();
     
     return token;
 }
@@ -958,45 +947,4 @@ app.post('/auth/logout', (req, res) => {
     }
     
     res.json({ success: true });
-});
-
-// Load sessions from file
-function loadSessions() {
-    try {
-        const sessionsPath = path.join(__dirname, 'sessions.json');
-        if (fs.existsSync(sessionsPath)) {
-            const data = JSON.parse(fs.readFileSync(sessionsPath, 'utf8'));
-            deviceSessions = new Map(data.deviceSessions || []);
-            activeTokens = new Map(data.activeTokens || []);
-            console.log(`Loaded ${deviceSessions.size} device sessions and ${activeTokens.size} active tokens`);
-        }
-    } catch (error) {
-        console.error('Error loading sessions:', error);
-        deviceSessions = new Map();
-        activeTokens = new Map();
-    }
-}
-
-// Save sessions to file
-function saveSessions() {
-    try {
-        const sessionsPath = path.join(__dirname, 'sessions.json');
-        const data = {
-            deviceSessions: Array.from(deviceSessions.entries()),
-            activeTokens: Array.from(activeTokens.entries())
-        };
-        fs.writeFileSync(sessionsPath, JSON.stringify(data, null, 2), 'utf8');
-        console.log('Sessions saved successfully');
-    } catch (error) {
-        console.error('Error saving sessions:', error);
-    }
-}
-
-// Load sessions on startup
-loadSessions();
-
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Protected API available at: /api.json`);
 });
