@@ -500,7 +500,7 @@ app.get('/account', async (req, res) => {
     }
 });
 
-// Update the login route:
+// Replace your login route temporarily with this simpler version:
 
 app.post('/auth/login', async (req, res) => {
     const { email, password, rememberDevice } = req.body;
@@ -528,21 +528,17 @@ app.post('/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'User profile not found' });
         }
 
-        // Generate device fingerprint and create secure session
-        const deviceFingerprint = generateDeviceFingerprint(req);
-        const { sessionId, sessionToken } = createDeviceSession(user.uid, deviceFingerprint, rememberDevice);
-        
-        console.log(`Login successful for ${user.username} on device ${deviceFingerprint.substring(0, 8)}...`);
+        console.log(`Login successful for ${user.username}`);
 
-        // Create temporary display token (short-lived)
-        const tempToken = createUserToken(user.uid);
+        // Simple temporary approach - just use old token method for now
+        const token = 'temp-token-' + user.uid;
 
         res.json({
             message: 'Login successful',
-            token: tempToken, // This will be replaced by secure session
+            token: token,
             username: user.username,
-            sessionId: sessionId,
-            sessionToken: sessionToken,
+            sessionId: 'simple-session-' + user.uid,
+            sessionToken: 'simple-token-' + Date.now(),
             redirectUrl: `/account`
         });
     } catch (error) {
@@ -990,6 +986,7 @@ function saveSessions() {
             activeTokens: Array.from(activeTokens.entries())
         };
         fs.writeFileSync(sessionsPath, JSON.stringify(data, null, 2), 'utf8');
+        console.log('Sessions saved successfully');
     } catch (error) {
         console.error('Error saving sessions:', error);
     }
