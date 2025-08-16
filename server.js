@@ -116,24 +116,61 @@ app.get('/', (req, res) => {
     <script>
         // Check if user is already logged in
         const savedToken = localStorage.getItem('brook_auth_token');
-        if (savedToken) {
-            fetch('/auth/check?token=' + savedToken)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.authenticated) {
-                        // User is still logged in, show account link
-                        const loginLink = document.querySelector('a[href="/login"]');
-                        if (loginLink) {
-                            loginLink.textContent = data.username;
-                            loginLink.href = '/account?token=' + savedToken;
-                        }
-                    } else {
-                        // Token expired, clear localStorage
-                        localStorage.removeItem('brook_auth_token');
-                        localStorage.removeItem('brook_username');
+        const savedUsername = localStorage.getItem('brook_username');
+        
+        if (savedToken && savedUsername) {
+            fetch('/auth/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: savedToken })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.valid) {
+                    // User is still logged in, show their username
+                    const authLink = document.querySelector('#auth-link') || document.querySelector('a[href="/login"]');
+                    if (authLink) {
+                        authLink.textContent = '@' + savedUsername;
+                        authLink.href = '/account';
+                        authLink.style.color = '#36038f';
+                        authLink.style.fontWeight = '600';
                     }
-                })
-                .catch(error => console.log('Auth check failed:', error));
+                } else {
+                    // Token expired, clear localStorage
+                    localStorage.removeItem('brook_auth_token');
+                    localStorage.removeItem('brook_username');
+                    // Reset to login button
+                    const authLink = document.querySelector('#auth-link') || document.querySelector('a[href="/login"]');
+                    if (authLink) {
+                        authLink.textContent = 'Login';
+                        authLink.href = '/login';
+                        authLink.style.color = '';
+                        authLink.style.fontWeight = '';
+                    }
+                }
+            })
+            .catch(error => {
+                console.log('Auth check failed:', error);
+                // Reset to login button on error
+                localStorage.removeItem('brook_auth_token');
+                localStorage.removeItem('brook_username');
+                const authLink = document.querySelector('#auth-link') || document.querySelector('a[href="/login"]');
+                if (authLink) {
+                    authLink.textContent = 'Login';
+                    authLink.href = '/login';
+                    authLink.style.color = '';
+                    authLink.style.fontWeight = '';
+                }
+            });
+        } else {
+            // No saved credentials, ensure it shows Login
+            const authLink = document.querySelector('#auth-link') || document.querySelector('a[href="/login"]');
+            if (authLink) {
+                authLink.textContent = 'Login';
+                authLink.href = '/login';
+                authLink.style.color = '';
+                authLink.style.fontWeight = '';
+            }
         }
     </script>
     `;
