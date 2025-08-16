@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 
 const app = express();
 // Fix: Clean the PORT variable and ensure it's a valid number
@@ -597,10 +598,12 @@ app.post('/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'Invalid email or password' });
         }
 
-        if (userCredential.password !== password) {
+        // Verify hashed password
+        const isValidPassword = await bcrypt.compare(password, userCredential.password);
+        if (!isValidPassword) {
             return res.status(400).json({ error: 'Invalid email or password' });
         }
-
+        
         const user = apiData.users.find(u => u.uid === userCredential.uid);
         if (!user) {
             return res.status(400).json({ error: 'User profile not found' });
@@ -681,10 +684,13 @@ app.post('/auth/register', async (req, res) => {
             lastUpdated: new Date().toISOString()
         };
 
+        // Hash the password before storing
+        const hashedPassword = await bcrypt.hash(password, 12);
+        
         const newCredential = {
             uid: newUID,
             email: email.toLowerCase(),
-            password: password
+            password: hashedPassword // Store hashed password
         };
 
         apiData.users.push(newUser);
