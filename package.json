@@ -4,10 +4,8 @@
   "description": "Brook.sh user profile system with authentication",
   "main": "server.js",
   "scripts": {
-    "start": "NODE_ENV=production node server.js",
-    "dev": "nodemon server.js",
-    "build": "echo 'No build step required'",
-    "test": "echo 'No tests specified'"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
@@ -26,16 +24,8 @@
   "keywords": [
     "express",
     "authentication",
-    "user-profiles",
-    "brook.sh",
-    "node.js"
+    "user-profiles"
   ],
-  "author": "Your Name",
-  "license": "ISC",
-  "type": "commonjs",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/fwmilo/test.git"
-  },
-  "homepage": "https://brook.sh"
+  "author": "",
+  "license": "ISC"
 }
