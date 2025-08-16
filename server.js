@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,6 +62,41 @@ function saveAPIData(data) {
     } catch (error) {
         console.error('Error saving API data:', error);
     }
+}
+
+// Generate secure token
+function generateSecureToken(uid) {
+    const timestamp = Date.now();
+    const random = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.createHash('sha256').update(`${uid}-${timestamp}-${random}`).digest('hex');
+    return `brook_${hash.substring(0, 32)}`;
+}
+
+// Parse token to get UID (you'll need to store token-to-UID mapping)
+let activeTokens = new Map(); // In production, use Redis or database
+
+function createUserToken(uid) {
+    const token = generateSecureToken(uid);
+    activeTokens.set(token, { uid, created: Date.now() });
+    
+    // Clean up old tokens (optional)
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    for (let [key, value] of activeTokens) {
+        if (value.created < oneDayAgo) {
+            activeTokens.delete(key);
+        }
+    }
+    
+    return token;
+}
+
+function validateToken(token) {
+    if (!token || !activeTokens.has(token)) {
+        return null;
+    }
+    
+    const tokenData = activeTokens.get(token);
+    return tokenData.uid;
 }
 
 // Middleware
@@ -217,15 +253,16 @@ app.get('/login', (req, res) => {
 async function requireAuth(req, res, next) {
     const token = req.query.token || req.headers.authorization;
     
-    if (!token || !token.startsWith('temp-token-')) {
+    if (!token) {
         return res.redirect('/login');
     }
     
     try {
-        // Extract UID from token
-        const uid = parseInt(token.replace('temp-token-', ''));
+        const uid = validateToken(token);
+        if (!uid) {
+            return res.redirect('/login');
+        }
         
-        // Fetch from internal API
         const apiData = await fetchInternalAPI();
         const user = apiData.users.find(u => u.uid === uid);
         
@@ -373,7 +410,7 @@ app.post('/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'User profile not found' });
         }
 
-        const token = 'temp-token-' + user.uid;
+        const token = createUserToken(user.uid);
         console.log(`Login successful for ${user.username}`);
 
         res.json({
@@ -445,7 +482,7 @@ app.post('/auth/register', async (req, res) => {
         
         console.log(`New user registered: ${usernameNormalized} (UID: ${newUID})`);
 
-        const token = 'temp-token-' + newUID;
+        const token = createUserToken(newUID);
 
         res.status(201).json({
             message: 'Account created successfully',
@@ -496,16 +533,20 @@ app.get('/auth/check-username/:username', async (req, res) => {
     }
 });
 
-// Add token verification route
+// Update token verification route:
 app.post('/auth/verify', async (req, res) => {
     const { token } = req.body;
     
-    if (!token || !token.startsWith('temp-token-')) {
+    if (!token) {
         return res.json({ valid: false });
     }
     
     try {
-        const uid = parseInt(token.replace('temp-token-', ''));
+        const uid = validateToken(token);
+        if (!uid) {
+            return res.json({ valid: false });
+        }
+        
         const apiData = await fetchInternalAPI();
         const user = apiData.users.find(u => u.uid === uid);
         
@@ -717,16 +758,23 @@ app.get('/:username', async (req, res) => {
     }
 });
 
-// Debug route to check API data
+// Debug route (REMOVE IN PRODUCTION or add admin check)
 app.get('/debug', (req, res) => {
+    // Only allow in development or with admin key
+    const adminKey = req.query.admin;
+    if (process.env.NODE_ENV === 'production' && adminKey !== process.env.ADMIN_KEY) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+    
     const apiData = loadAPIData();
     res.json({
         message: 'API Debug Info',
         totalUsers: apiData.users.length,
         totalCredentials: apiData.credentials.length,
-        users: apiData.users.map(u => ({ uid: u.uid, username: u.username })),
-        // Don't show passwords in debug
-        credentials: apiData.credentials.map(c => ({ uid: c.uid, email: c.email }))
+        // Only show usernames and UIDs, NO emails
+        users: apiData.users.map(u => ({ uid: u.uid, username: u.username, profileViews: u.profileViews })),
+        // Don't show any credential info in debug
+        credentialsCount: apiData.credentials.length
     });
 });
 
