@@ -51,6 +51,9 @@ function createDeviceSession(uid, deviceFingerprint, rememberDevice = false) {
     // Clean up expired sessions
     cleanupExpiredSessions();
     
+    // Save sessions to file
+    saveSessions();
+    
     return { sessionId, sessionToken };
 }
 
@@ -192,6 +195,41 @@ function validateToken(token) {
     const tokenData = activeTokens.get(token);
     return tokenData.uid;
 }
+
+// Load sessions from file
+function loadSessions() {
+    try {
+        const sessionsPath = path.join(__dirname, 'sessions.json');
+        if (fs.existsSync(sessionsPath)) {
+            const data = JSON.parse(fs.readFileSync(sessionsPath, 'utf8'));
+            deviceSessions = new Map(data.deviceSessions || []);
+            activeTokens = new Map(data.activeTokens || []);
+            console.log(`Loaded ${deviceSessions.size} device sessions and ${activeTokens.size} active tokens`);
+        }
+    } catch (error) {
+        console.error('Error loading sessions:', error);
+        deviceSessions = new Map();
+        activeTokens = new Map();
+    }
+}
+
+// Save sessions to file
+function saveSessions() {
+    try {
+        const sessionsPath = path.join(__dirname, 'sessions.json');
+        const data = {
+            deviceSessions: Array.from(deviceSessions.entries()),
+            activeTokens: Array.from(activeTokens.entries())
+        };
+        fs.writeFileSync(sessionsPath, JSON.stringify(data, null, 2), 'utf8');
+        console.log('Sessions saved successfully');
+    } catch (error) {
+        console.error('Error saving sessions:', error);
+    }
+}
+
+// Load sessions on startup
+loadSessions();
 
 // Middleware
 app.use(express.json());
