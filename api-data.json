@@ -1,0 +1,19 @@
+{
+  "users": [
+    {
+      "uid": 1,
+      "username": "void",
+      "alias": "void",
+      "createdAt": "2025-08-16T14:51:10.654Z",
+      "profileViews": 0,
+      "lastUpdated": "2025-08-16T14:51:10.655Z"
+    }
+  ],
+  "credentials": [
+    {
+      "uid": 1,
+      "email": "jrac999@gmail.com",
+      "password": "$2b$12$bMjg/gRhcEMO3BXTwt.EHel6ZuK5IaEHCSTKM3lPrNZ2dyQ1CuUEO"
+    }
+  ]
+}
