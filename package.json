@@ -1,11 +1,13 @@
 {
   "name": "brooksh-backend",
   "version": "1.0.0",
-  "description": "Brook.sh user profile system",
+  "description": "Brook.sh user profile system with authentication",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "NODE_ENV=production node server.js",
+    "dev": "nodemon server.js",
+    "build": "echo 'No build step required'",
+    "test": "echo 'No tests specified'"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
@@ -17,8 +19,23 @@
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
-  "keywords": [],
-  "author": "",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "express",
+    "authentication",
+    "user-profiles",
+    "brook.sh",
+    "node.js"
+  ],
+  "author": "Your Name",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fwmilo/test.git"
+  },
+  "homepage": "https://brook.sh"
 }

@@ -6,6 +6,9 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Production environment check
+const isProduction = process.env.NODE_ENV === 'production';
+
 // Database file paths (separate sensitive data)
 const USERS_PATH = path.join(__dirname, 'data', 'users.json');
 const CREDENTIALS_PATH = path.join(__dirname, 'data', 'credentials.json');
@@ -439,8 +442,13 @@ app.get('/:username', (req, res) => {
     `);
 });
 
+// Trust proxy for production (for HTTPS)
+if (isProduction) {
+    app.set('trust proxy', 1);
+}
+
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:3000`);
-    console.log(`Login page: http://localhost:3000/login`);
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`Total users: ${users.length}`);
 });
