@@ -469,7 +469,10 @@
                 const result = await response.json();
 
                 if (response.ok) {
-                    localStorage.setItem('brooksh_token', result.token);
+                    // Store token in localStorage for persistent login (FIXED - same key as login)
+                    localStorage.setItem('brook_auth_token', result.token);
+                    localStorage.setItem('brook_username', result.username);
+                    
                     showSuccess('Account created! Welcome to Brook.sh! Redirecting...');
                     setTimeout(() => {
                         window.location.href = result.redirectUrl;
