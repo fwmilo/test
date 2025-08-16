@@ -241,8 +241,22 @@ async function saveSessions() {
     }
 }
 
-// Load sessions on startup
-loadSessions();
+// Add Railway snapshot optimization
+process.on('SIGUSR2', () => {
+    console.log('SIGUSR2 received - Railway snapshot signal');
+    // Don't exit, just acknowledge
+});
+
+// Optimize startup for Railway snapshots
+if (process.env.RAILWAY_SNAPSHOT) {
+    console.log('⚡ Railway snapshot mode detected - optimizing startup');
+    // Skip heavy operations during snapshots
+    deviceSessions = new Map();
+    activeTokens = new Map();
+} else {
+    // Normal startup
+    loadSessions();
+}
 
 // Middleware
 app.use(express.json());
@@ -1151,10 +1165,6 @@ process.on('unhandledRejection', (reason, promise) => {
 setInterval(() => {
     console.log(`✓ Server health check - Uptime: ${Math.floor(process.uptime())}s, Sessions: ${deviceSessions.size}, Tokens: ${activeTokens.size}`);
 }, 30000); // Every 30 seconds/ /  
- F o r c e  
- d e p l o y  
- c o m m e n t  
- / /  
  F o r c e  
  d e p l o y  
  c o m m e n t  
