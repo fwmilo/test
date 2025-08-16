@@ -181,35 +181,51 @@ app.post('/auth/login', (req, res) => {
     const { email, password } = req.body;
     
     console.log(`Login attempt: ${email}`);
+    console.log(`Password provided: ${password}`);
+    console.log(`Total credentials in database: ${credentials.length}`);
     
     if (!email || !password) {
         return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    // Find user credentials by email
+    // Debug: Show all emails in database
+    console.log('Emails in database:', credentials.map(c => c.email));
+
+    // Find user credentials by email (case insensitive)
     const userCredential = credentials.find(c => c.email.toLowerCase() === email.toLowerCase());
+    
     if (!userCredential) {
+        console.log(`No user found with email: ${email.toLowerCase()}`);
         return res.status(400).json({ error: 'Invalid email or password' });
     }
 
-    // Check password (in production, compare hashed passwords)
+    console.log(`Found user credential:`, {
+        uid: userCredential.uid,
+        email: userCredential.email,
+        passwordInDB: userCredential.password
+    });
+
+    // Check password (exact match for now)
     if (userCredential.password !== password) {
+        console.log(`Password mismatch. Expected: "${userCredential.password}", Got: "${password}"`);
         return res.status(400).json({ error: 'Invalid email or password' });
     }
 
     // Find user profile data
     const user = users.find(u => u.uid === userCredential.uid);
     if (!user) {
+        console.log(`No user profile found for UID: ${userCredential.uid}`);
         return res.status(400).json({ error: 'User profile not found' });
     }
 
     const token = 'temp-token-' + user.uid;
+    console.log(`Login successful for user: ${user.username} (UID: ${user.uid})`);
 
     res.json({
         message: 'Login successful',
         token: token,
         username: user.username,
-        redirectUrl: `/account?token=${token}` // Include token in URL
+        redirectUrl: `/account?token=${token}`
     });
 });
 
@@ -524,6 +540,16 @@ app.post('/auth/verify', (req, res) => {
             profileViews: user.profileViews,
             createdAt: user.createdAt
         }
+    });
+});
+
+// Debug route to see database contents (REMOVE IN PRODUCTION!)
+app.get('/debug/users', (req, res) => {
+    res.json({
+        totalUsers: users.length,
+        totalCredentials: credentials.length,
+        users: users.map(u => ({ uid: u.uid, username: u.username, createdAt: u.createdAt })),
+        emails: credentials.map(c => ({ uid: c.uid, email: c.email })) // Don't show passwords
     });
 });
 
