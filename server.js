@@ -1,7 +1,3 @@
-console.log('🚀 Starting Brook.sh server...');
-console.log(`📂 Working directory: ${__dirname}`);
-console.log(`🔌 Target port: ${PORT}`);
-
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
@@ -9,7 +5,14 @@ const fs = require('fs');
 const crypto = require('crypto');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+// Fix: Clean the PORT variable and ensure it's a valid number
+const PORT = parseInt(process.env.PORT) || 3000;
+
+// Move startup logs here AFTER PORT is defined
+console.log('🚀 Starting Brook.sh server...');
+console.log(`📂 Working directory: ${__dirname}`);
+console.log(`🔌 Target port: ${PORT}`);
+console.log(`🔌 Port type: ${typeof PORT}`);
 
 // API secret key for internal requests
 const API_SECRET = process.env.API_SECRET || 'brook-sh-internal-api-key-2024';
