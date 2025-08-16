@@ -12,18 +12,52 @@ const API_SECRET = process.env.API_SECRET || 'brook-sh-internal-api-key-2024';
 // Load API data
 function loadAPIData() {
     try {
-        const apiData = JSON.parse(fs.readFileSync(path.join(__dirname, 'api-data.json'), 'utf8'));
+        const apiDataPath = path.join(__dirname, 'api-data.json');
+        
+        // Check if file exists
+        if (!fs.existsSync(apiDataPath)) {
+            console.log('API data file not found, creating default...');
+            const defaultData = { users: [], credentials: [] };
+            fs.writeFileSync(apiDataPath, JSON.stringify(defaultData, null, 2), 'utf8');
+            return defaultData;
+        }
+        
+        // Read file and remove BOM if present
+        const rawData = fs.readFileSync(apiDataPath, 'utf8');
+        const cleanData = rawData.replace(/^\uFEFF/, ''); // Remove BOM
+        
+        // Try to parse JSON
+        const apiData = JSON.parse(cleanData);
+        
+        // Validate structure
+        if (!apiData.users || !apiData.credentials) {
+            throw new Error('Invalid API data structure');
+        }
+        
         return apiData;
     } catch (error) {
         console.error('Error loading API data:', error);
-        return { users: [], credentials: [] };
+        
+        // Create clean default file
+        const defaultData = { users: [], credentials: [] };
+        try {
+            const apiDataPath = path.join(__dirname, 'api-data.json');
+            fs.writeFileSync(apiDataPath, JSON.stringify(defaultData, null, 2), 'utf8');
+            console.log('Created clean API data file');
+        } catch (writeError) {
+            console.error('Failed to create clean API data file:', writeError);
+        }
+        
+        return defaultData;
     }
 }
 
 // Save API data
 function saveAPIData(data) {
     try {
-        fs.writeFileSync(path.join(__dirname, 'api-data.json'), JSON.stringify(data, null, 2));
+        const apiDataPath = path.join(__dirname, 'api-data.json');
+        fs.writeFileSync(apiDataPath, JSON.stringify(data, null, 2), 'utf8');
+        console.log('API data saved successfully');
     } catch (error) {
         console.error('Error saving API data:', error);
     }
@@ -503,6 +537,19 @@ app.get('/:username', async (req, res) => {
         console.error('Profile lookup error:', error);
         res.status(500).send('Server error');
     }
+});
+
+// Debug route to check API data
+app.get('/debug', (req, res) => {
+    const apiData = loadAPIData();
+    res.json({
+        message: 'API Debug Info',
+        totalUsers: apiData.users.length,
+        totalCredentials: apiData.credentials.length,
+        users: apiData.users.map(u => ({ uid: u.uid, username: u.username })),
+        // Don't show passwords in debug
+        credentials: apiData.credentials.map(c => ({ uid: c.uid, email: c.email }))
+    });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
