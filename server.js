@@ -85,24 +85,14 @@ app.get('/api.json', (req, res) => {
     res.json(apiData);
 });
 
-// Helper function to fetch your own API
+// Helper function to fetch your own API - FIXED
 async function fetchInternalAPI() {
     try {
-        const response = await fetch(`http://localhost:${PORT}/api.json`, {
-            headers: {
-                'x-api-secret': API_SECRET
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('API fetch failed');
-        }
-        
-        return await response.json();
+        // Use direct function call instead of HTTP request
+        return loadAPIData();
     } catch (error) {
         console.error('Internal API fetch error:', error);
-        // Fallback to direct file read
-        return loadAPIData();
+        return { users: [], credentials: [] };
     }
 }
 
