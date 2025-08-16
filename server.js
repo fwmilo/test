@@ -998,7 +998,6 @@ app.get('/debug', (req, res) => {
 });
 
 // Add new route for device session verification:
-
 app.post('/auth/verify-device', async (req, res) => {
     const { sessionId, sessionToken } = req.body;
     
