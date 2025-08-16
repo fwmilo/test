@@ -246,6 +246,25 @@ loadSessions();
 // Middleware
 app.use(express.json());
 
+// Railway health check endpoint
+app.get('/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
+// Railway readiness check
+app.get('/ready', (req, res) => {
+    res.status(200).json({ 
+        status: 'ready',
+        sessions: deviceSessions.size,
+        tokens: activeTokens.size
+    });
+});
+
 // PROTECTED API ENDPOINT - Only accessible with secret header
 app.get('/api.json', (req, res) => {
     const authHeader = req.headers['x-api-secret'];
