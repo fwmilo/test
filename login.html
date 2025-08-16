@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Brook.sh</title>
-    <meta name="description" content="Create your personal Brook.sh profile">
+    <title>Brook.sh - Login</title>
     <link rel="icon" type="image/png" href="https://i.postimg.cc/VLhBBn9h/void-animated.png">
     <style>
         * {
@@ -14,7 +13,7 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: #0a0a0a;
             color: #ffffff;
             min-height: 100vh;
@@ -24,6 +23,7 @@
             overflow: hidden;
         }
 
+        /* Background video */
         .background {
             position: fixed;
             top: 0;
@@ -41,37 +41,41 @@
             opacity: 0.3;
         }
 
+        /* Main container */
         .login-container {
             background: rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(20px);
             border-radius: 25px;
             padding: 40px;
             border: 2px solid rgba(54, 3, 143, 0.5);
-            box-shadow: 0 0 30px rgba(54, 3, 143, 0.4);
-            width: 100%;
+            text-align: center;
             max-width: 450px;
+            width: 90%;
+            box-shadow: 0 0 30px rgba(54, 3, 143, 0.4);
             position: relative;
             z-index: 1;
         }
 
+        /* Logo/Title */
         .logo {
-            text-align: center;
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            filter: drop-shadow(#36038f 0 0 4px);
+            background: linear-gradient(135deg, #ffffff, #36038f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.7);
             margin-bottom: 30px;
+            font-size: 16px;
         }
 
-        .logo h1 {
-            font-size: 32px;
-            font-weight: 600;
-            color: #36038f;
-            margin-bottom: 5px;
-        }
-
-        .logo p {
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 14px;
-        }
-
-        .form-toggle {
+        /* Tab switching */
+        .tab-container {
             display: flex;
             margin-bottom: 30px;
             background: rgba(255, 255, 255, 0.1);
@@ -79,166 +83,217 @@
             padding: 4px;
         }
 
-        .toggle-btn {
+        .tab {
             flex: 1;
             padding: 12px;
-            background: none;
+            background: transparent;
             border: none;
             color: rgba(255, 255, 255, 0.7);
-            cursor: pointer;
             border-radius: 8px;
-            transition: all 0.2s ease;
+            cursor: pointer;
+            transition: all 0.3s ease;
             font-weight: 500;
         }
 
-        .toggle-btn.active {
+        .tab.active {
             background: #36038f;
-            color: #ffffff;
+            color: white;
+            box-shadow: 0 2px 8px rgba(54, 3, 143, 0.3);
         }
 
-        .form-group {
+        /* Form styles */
+        .form-container {
+            position: relative;
+        }
+
+        .form {
+            display: none;
+        }
+
+        .form.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .input-group {
             margin-bottom: 20px;
+            text-align: left;
+            position: relative;
         }
 
-        .form-group label {
+        .input-group label {
             display: block;
             margin-bottom: 8px;
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255, 255, 255, 0.9);
             font-weight: 500;
+            font-size: 14px;
         }
 
-        .form-group input {
+        .input-group input {
             width: 100%;
-            padding: 14px 16px;
-            background: rgba(255, 255, 255, 0.1);
+            padding: 15px 20px;
             border: 2px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
-            color: #ffffff;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
             font-size: 16px;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
         }
 
-        .form-group input:focus {
+        .input-group input:focus {
             outline: none;
             border-color: #36038f;
-            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 3px rgba(54, 3, 143, 0.2);
         }
 
-        .form-group input::placeholder {
+        .input-group input::placeholder {
             color: rgba(255, 255, 255, 0.5);
         }
 
-        .input-helper {
+        /* Checkbox */
+        .checkbox-group {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-top: 6px;
+            margin-bottom: 25px;
+            justify-content: flex-start;
         }
 
-        .char-counter {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.5);
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
+            accent-color: #36038f;
         }
 
-        .availability-check {
-            font-size: 12px;
-            font-weight: 500;
+        .checkbox-group label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            cursor: pointer;
         }
 
-        .available {
-            color: #43b581;
-        }
-
-        .unavailable {
-            color: #f04747;
-        }
-
+        /* Submit button */
         .submit-btn {
             width: 100%;
-            padding: 14px;
-            background: #36038f;
+            padding: 15px;
+            background: linear-gradient(135deg, #36038f, #5a0eb8);
             border: none;
             border-radius: 12px;
-            color: #ffffff;
+            color: white;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
             margin-bottom: 20px;
         }
 
-        .submit-btn:hover:not(:disabled) {
-            background: #2a026b;
-            transform: translateY(-1px);
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(54, 3, 143, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
         }
 
         .submit-btn:disabled {
-            background: rgba(54, 3, 143, 0.5);
+            opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
 
-        .message {
-            padding: 12px 16px;
+        /* Username availability indicator */
+        .username-status {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+        }
+
+        .username-available {
+            color: #4ade80;
+        }
+
+        .username-taken {
+            color: #ef4444;
+        }
+
+        /* Error message */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 12px;
             border-radius: 8px;
             margin-bottom: 20px;
-            display: none;
             font-size: 14px;
-            font-weight: 500;
-        }
-
-        .error-message {
-            background: rgba(240, 71, 71, 0.2);
-            border: 1px solid #f04747;
-            color: #ff6b6b;
-        }
-
-        .success-message {
-            background: rgba(67, 181, 129, 0.2);
-            border: 1px solid #43b581;
-            color: #43b581;
-        }
-
-        .home-link {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #36038f;
-            text-decoration: none;
-            font-weight: 600;
-            padding: 8px 16px;
-            background: rgba(54, 3, 143, 0.1);
-            border-radius: 8px;
-            transition: all 0.2s ease;
-        }
-
-        .home-link:hover {
-            background: rgba(54, 3, 143, 0.2);
-        }
-
-        .footer-text {
             text-align: center;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.5);
-            margin-top: 20px;
         }
 
-        .remember-device {
-            margin-top: 10px;
+        /* Success message */
+        .success-message {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            color: #4ade80;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
             font-size: 14px;
-            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
         }
 
-        .remember-device label {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
+        /* Loading state */
+        .loading {
+            position: relative;
+            pointer-events: none;
         }
 
-        .remember-device input {
-            margin-right: 8px;
-            accent-color: #36038f;
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Back to home link */
+        .back-home {
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s ease;
+        }
+
+        .back-home:hover {
+            color: #36038f;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 20px;
+                margin: 20px;
+            }
+
+            .logo {
+                font-size: 36px;
+            }
         }
     </style>
 </head>
@@ -249,311 +304,249 @@
         </video>
     </div>
 
-    <a href="/" class="home-link">← Back to Home</a>
-
     <div class="login-container">
-        <div class="logo">
-            <h1>Brook.sh</h1>
-            <p>Create your personal profile</p>
+        <div class="logo">Brook.sh</div>
+        <div class="subtitle">Welcome back to your digital space</div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-container">
+            <button class="tab active" onclick="switchTab('login')">Login</button>
+            <button class="tab" onclick="switchTab('register')">Register</button>
         </div>
 
-        <div class="form-toggle">
-            <button class="toggle-btn active" id="loginToggle">Login</button>
-            <button class="toggle-btn" id="registerToggle">Sign Up</button>
-        </div>
-
-        <div class="error-message message" id="errorMessage"></div>
-        <div class="success-message message" id="successMessage"></div>
+        <!-- Error/Success Messages -->
+        <div id="message-container"></div>
 
         <!-- Login Form -->
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="loginEmail">Email Address</label>
-                <input type="email" id="loginEmail" name="email" placeholder="Enter your email" required>
-            </div>
-            <div class="form-group">
-                <label for="loginPassword">Password</label>
-                <input type="password" id="loginPassword" name="password" placeholder="Enter your password" required>
-            </div>
-            <div class="remember-device">
-                <label>
-                    <input type="checkbox" name="rememberDevice" id="rememberDevice">
-                    <span>Remember this device for 30 days</span>
-                </label>
-            </div>
-            <button type="submit" class="submit-btn">Sign In</button>
-        </form>
-
-        <!-- Register Form -->
-        <form id="registerForm" style="display: none;">
-            <div class="form-group">
-                <label for="registerUsername">Username (3-20 characters)</label>
-                <input type="text" id="registerUsername" name="username" placeholder="Choose your username" 
-                       minlength="3" maxlength="20" pattern="[a-zA-Z0-9_-]+" required>
-                <div class="input-helper">
-                    <div class="availability-check" id="availabilityCheck"></div>
-                    <div class="char-counter" id="usernameCounter">0/20</div>
+        <div class="form-container">
+            <form id="login-form" class="form active">
+                <div class="input-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" name="email" placeholder="Enter your email" required>
                 </div>
-            </div>
-            <div class="form-group">
-                <label for="registerEmail">Email Address</label>
-                <input type="email" id="registerEmail" name="email" placeholder="Enter your email" required>
-            </div>
-            <div class="form-group">
-                <label for="registerPassword">Password (minimum 6 characters)</label>
-                <input type="password" id="registerPassword" name="password" placeholder="Create a secure password" 
-                       minlength="6" required>
-            </div>
-            <div class="remember-device">
-                <label>
-                    <input type="checkbox" name="rememberDevice" id="rememberDeviceReg">
-                    <span>Remember this device for 30 days</span>
-                </label>
-            </div>
-            <button type="submit" class="submit-btn" id="registerBtn">Create Account</button>
-        </form>
+                
+                <div class="input-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" name="password" placeholder="Enter your password" required>
+                </div>
 
-        <div class="footer-text">
-            Your profile will be available at brook.sh/yourusername
+                <div class="checkbox-group">
+                    <input type="checkbox" id="login-remember" name="rememberDevice">
+                    <label for="login-remember">Remember this device</label>
+                </div>
+
+                <button type="submit" class="submit-btn">Sign In</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" class="form">
+                <div class="input-group">
+                    <label for="register-username">Username</label>
+                    <input type="text" id="register-username" name="username" placeholder="Choose a username" required>
+                    <div class="username-status" id="username-status"></div>
+                </div>
+
+                <div class="input-group">
+                    <label for="register-email">Email</label>
+                    <input type="email" id="register-email" name="email" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="register-password">Password</label>
+                    <input type="password" id="register-password" name="password" placeholder="Create a password" required minlength="6">
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="register-remember" name="rememberDevice">
+                    <label for="register-remember">Remember this device</label>
+                </div>
+
+                <button type="submit" class="submit-btn">Create Account</button>
+            </form>
         </div>
+
+        <a href="/" class="back-home">← Back to Home</a>
     </div>
 
     <script>
-        const loginToggle = document.getElementById('loginToggle');
-        const registerToggle = document.getElementById('registerToggle');
-        const loginForm = document.getElementById('loginForm');
-        const registerForm = document.getElementById('registerForm');
-        const errorMessage = document.getElementById('errorMessage');
-        const successMessage = document.getElementById('successMessage');
-        const usernameInput = document.getElementById('registerUsername');
-        const usernameCounter = document.getElementById('usernameCounter');
-        const availabilityCheck = document.getElementById('availabilityCheck');
-        const registerBtn = document.getElementById('registerBtn');
+        // Tab switching functionality
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
 
-        let usernameCheckTimeout;
-        let isUsernameAvailable = false;
-        let isCheckingUsername = false;
+            // Update forms
+            document.querySelectorAll('.form').forEach(form => {
+                form.classList.remove('active');
+            });
+            document.getElementById(tabName + '-form').classList.add('active');
 
-        // Form toggle
-        loginToggle.addEventListener('click', () => {
-            loginToggle.classList.add('active');
-            registerToggle.classList.remove('active');
-            loginForm.style.display = 'block';
-            registerForm.style.display = 'none';
-            clearMessages();
-        });
+            // Clear messages
+            clearMessage();
+        }
 
-        registerToggle.addEventListener('click', () => {
-            registerToggle.classList.add('active');
-            loginToggle.classList.remove('active');
-            loginForm.style.display = 'none';
-            registerForm.style.display = 'block';
-            clearMessages();
-        });
+        // Message display functions
+        function showMessage(message, type = 'error') {
+            const container = document.getElementById('message-container');
+            container.innerHTML = `<div class="${type}-message">${message}</div>`;
+        }
 
-        // Username validation and availability check
-        usernameInput.addEventListener('input', () => {
-            const username = usernameInput.value;
-            const length = username.length;
-            usernameCounter.textContent = `${length}/20`;
+        function clearMessage() {
+            document.getElementById('message-container').innerHTML = '';
+        }
 
-            clearTimeout(usernameCheckTimeout);
+        // Username availability check
+        let usernameTimeout;
+        document.getElementById('register-username').addEventListener('input', function() {
+            clearTimeout(usernameTimeout);
+            const username = this.value.trim();
+            const statusEl = document.getElementById('username-status');
             
-            // Reset availability status
-            isUsernameAvailable = false;
-            isCheckingUsername = false;
-            
-            // Clear availability display
-            availabilityCheck.textContent = '';
-            availabilityCheck.className = 'availability-check';
-            
-            updateRegisterButton();
-
-            if (length >= 3 && length <= 20 && /^[a-zA-Z0-9_-]+$/.test(username)) {
-                isCheckingUsername = true;
-                availabilityCheck.textContent = 'Checking...';
-                availabilityCheck.className = 'availability-check';
-                
-                usernameCheckTimeout = setTimeout(() => {
-                    checkUsernameAvailability(username);
-                }, 500);
+            if (username.length < 3) {
+                statusEl.innerHTML = '';
+                return;
             }
-        });
 
-        async function checkUsernameAvailability(username) {
-            try {
-                const response = await fetch(`/auth/check-username/${username}`);
-                const result = await response.json();
-                
-                isCheckingUsername = false;
-                
-                if (result.available) {
-                    availabilityCheck.textContent = '✓ Available';
-                    availabilityCheck.className = 'availability-check available';
-                    isUsernameAvailable = true;
-                } else {
-                    availabilityCheck.textContent = `✗ ${result.reason || 'Not available'}`;
-                    availabilityCheck.className = 'availability-check unavailable';
-                    isUsernameAvailable = false;
+            statusEl.innerHTML = '...';
+            
+            usernameTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/auth/check-username/${encodeURIComponent(username)}`);
+                    const data = await response.json();
+                    
+                    if (data.available) {
+                        statusEl.innerHTML = '<span class="username-available">✓</span>';
+                    } else {
+                        statusEl.innerHTML = '<span class="username-taken">✗</span>';
+                    }
+                } catch (error) {
+                    statusEl.innerHTML = '';
                 }
-                updateRegisterButton();
-            } catch (error) {
-                console.error('Username check failed:', error);
-                isCheckingUsername = false;
-                availabilityCheck.textContent = '⚠ Check failed';
-                availabilityCheck.className = 'availability-check unavailable';
-                // Allow submission even if check failed
-                isUsernameAvailable = true;
-                updateRegisterButton();
-            }
-        }
+            }, 500);
+        });
 
-        function updateRegisterButton() {
-            const username = usernameInput.value;
-            const email = document.getElementById('registerEmail').value;
-            const password = document.getElementById('registerPassword').value;
-            
-            // Basic validation
-            const isValidLength = username.length >= 3 && username.length <= 20;
-            const isValidPattern = /^[a-zA-Z0-9_-]+$/.test(username);
-            const hasEmail = email.length > 0;
-            const hasPassword = password.length >= 6;
-            
-            // Enable button if basic validation passes
-            const basicRequirementsMet = isValidLength && isValidPattern && hasEmail && hasPassword;
-            
-            // Only disable if basic requirements aren't met OR if we specifically know username is unavailable
-            registerBtn.disabled = !basicRequirementsMet || (availabilityCheck.className.includes('unavailable') && !isCheckingUsername);
-        }
-
-        // Also update when email/password fields change
-        document.getElementById('registerEmail').addEventListener('input', updateRegisterButton);
-        document.getElementById('registerPassword').addEventListener('input', updateRegisterButton);
-
-        function clearMessages() {
-            errorMessage.style.display = 'none';
-            successMessage.style.display = 'none';
-        }
-
-        function showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.style.display = 'block';
-            successMessage.style.display = 'none';
-        }
-
-        function showSuccess(message) {
-            successMessage.textContent = message;
-            successMessage.style.display = 'block';
-            errorMessage.style.display = 'none';
-        }
-
-        // Form submissions
-        loginForm.addEventListener('submit', async (e) => {
+        // Login form handler
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            clearMessages();
             
-            // Disable form during submission
-            const submitBtn = loginForm.querySelector('.submit-btn');
-            const originalText = submitBtn.textContent;
+            const submitBtn = this.querySelector('.submit-btn');
+            const formData = new FormData(this);
+            
+            // Show loading state
+            submitBtn.classList.add('loading');
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Signing in...';
-
-            const formData = new FormData(loginForm);
-            const data = {
-                email: formData.get('email'),
-                password: formData.get('password'),
-                rememberDevice: formData.get('rememberDevice') === 'on'
-            };
+            submitBtn.textContent = '';
+            clearMessage();
 
             try {
                 const response = await fetch('/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify({
+                        email: formData.get('email'),
+                        password: formData.get('password'),
+                        rememberDevice: formData.get('rememberDevice') === 'on'
+                    })
                 });
 
-                const result = await response.json();
-                console.log('Login response:', result); // Debug log
+                const data = await response.json();
 
-                if (response.ok && result.sessionId && result.sessionToken) {
-                    // Clear any existing session data first
-                    localStorage.clear();
-                    sessionStorage.clear();
+                if (response.ok) {
+                    // Store session data
+                    localStorage.setItem('brook_session_id', data.sessionId);
+                    localStorage.setItem('brook_session', btoa(JSON.stringify({
+                        sessionToken: data.sessionToken,
+                        created: Date.now()
+                    })));
+                    localStorage.setItem('brook_username', data.username);
+
+                    showMessage('Login successful! Redirecting...', 'success');
                     
-                    // Store new session data
-                    localStorage.setItem('brook_session_id', result.sessionId);
-                    
-                    const secureStorage = {
-                        sessionToken: result.sessionToken,
-                        username: result.username,
-                        deviceTrusted: data.rememberDevice
-                    };
-                    
-                    localStorage.setItem('brook_session', btoa(JSON.stringify(secureStorage)));
-                    localStorage.setItem('brook_username', result.username);
-                    
-                    showSuccess('Login successful! Welcome back!');
-                    
-                    // Redirect after a short delay
+                    // Redirect to account page
                     setTimeout(() => {
-                        window.location.href = '/account';
+                        window.location.href = data.redirectUrl || '/account';
                     }, 1000);
                 } else {
-                    showError(result.error || 'Login failed');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalText;
+                    showMessage(data.error || 'Login failed');
                 }
             } catch (error) {
-                console.error('Login network error:', error);
-                showError('Network error. Please try again.');
+                console.error('Login error:', error);
+                showMessage('Network error. Please try again.');
+            } finally {
+                // Reset button state
+                submitBtn.classList.remove('loading');
                 submitBtn.disabled = false;
-                submitBtn.textContent = originalText;
+                submitBtn.textContent = 'Sign In';
             }
         });
 
-        registerForm.addEventListener('submit', async (e) => {
+        // Register form handler
+        document.getElementById('register-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            clearMessages();
-
-            const formData = new FormData(registerForm);
-            const data = {
-                username: formData.get('username'),
-                email: formData.get('email'),
-                password: formData.get('password'),
-                rememberDevice: formData.get('rememberDevice') === 'on'
-            };
+            
+            const submitBtn = this.querySelector('.submit-btn');
+            const formData = new FormData(this);
+            
+            // Show loading state
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '';
+            clearMessage();
 
             try {
                 const response = await fetch('/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify({
+                        username: formData.get('username'),
+                        email: formData.get('email'),
+                        password: formData.get('password'),
+                        rememberDevice: formData.get('rememberDevice') === 'on'
+                    })
                 });
 
-                const result = await response.json();
+                const data = await response.json();
 
                 if (response.ok) {
-                    // Store secure session data (same as login)
-                    localStorage.setItem('brook_session_id', result.sessionId);
+                    // Store session data
+                    localStorage.setItem('brook_session_id', data.sessionId);
+                    localStorage.setItem('brook_session', btoa(JSON.stringify({
+                        sessionToken: data.sessionToken,
+                        created: Date.now()
+                    })));
+                    localStorage.setItem('brook_username', data.username);
+
+                    showMessage('Account created successfully! Redirecting...', 'success');
                     
-                    const secureStorage = {
-                        sessionToken: result.sessionToken,
-                        username: result.username,
-                        deviceTrusted: data.rememberDevice
-                    };
-                    
-                    localStorage.setItem('brook_session', btoa(JSON.stringify(secureStorage)));
-                    localStorage.setItem('brook_username', result.username);
-                    
-                    showSuccess('Account created! Welcome to Brook.sh! Redirecting...');
+                    // Redirect to account page
                     setTimeout(() => {
-                        window.location.href = result.redirectUrl;
-                    }, 2000);
+                        window.location.href = data.redirectUrl || '/account';
+                    }, 1000);
                 } else {
-                    showError(result.error);
+                    showMessage(data.error || 'Registration failed');
                 }
             } catch (error) {
-                showError('Network error. Please try again.');
+                console.error('Registration error:', error);
+                showMessage('Network error. Please try again.');
+            } finally {
+                // Reset button state
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Account';
+            }
+        });
+
+        // Auto-login check on page load
+        window.addEventListener('load', function() {
+            const sessionId = localStorage.getItem('brook_session_id');
+            const sessionData = localStorage.getItem('brook_session');
+            const username = localStorage.getItem('brook_username');
+            
+            if (sessionId && sessionData && username) {
+                // User might already be logged in, redirect to account
+                window.location.href = '/account';
             }
         });
     </script>
