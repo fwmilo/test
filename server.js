@@ -96,6 +96,46 @@ app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
 });
 
+// Authentication middleware - Updated to work with browser redirects
+function requireAuth(req, res, next) {
+    // Check for token in query parameter (for browser navigation)
+    const token = req.query.token || req.headers.authorization;
+    
+    if (!token || !token.startsWith('temp-token-')) {
+        return res.redirect('/login?error=Please login to access your account');
+    }
+    
+    // Extract UID from token
+    const uid = parseInt(token.replace('temp-token-', ''));
+    const user = users.find(u => u.uid === uid);
+    
+    if (!user) {
+        return res.redirect('/login?error=Invalid session. Please login again');
+    }
+    
+    // Attach user to request
+    req.user = user;
+    next();
+}
+
+// Serve account dashboard with dynamic user data
+app.get('/account', requireAuth, (req, res) => {
+    const user = req.user;
+    const daysSinceCreation = Math.floor((Date.now() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24));
+    
+    // Serve account.html with user data injected
+    let accountHtml = fs.readFileSync(path.join(__dirname, 'account.html'), 'utf8');
+    
+    // Replace placeholders with real user data
+    accountHtml = accountHtml.replace('void', user.username);
+    accountHtml = accountHtml.replace('@void', `@${user.username}`);
+    accountHtml = accountHtml.replace('V', user.username.charAt(0).toUpperCase());
+    accountHtml = accountHtml.replace('42', user.profileViews);
+    accountHtml = accountHtml.replace('1', user.uid);
+    
+    res.send(accountHtml);
+});
+
 // Username availability check route
 app.get('/auth/check-username/:username', (req, res) => {
     const { username } = req.params;
@@ -112,7 +152,7 @@ app.get('/auth/check-username/:username', (req, res) => {
         return res.json({ available: false, reason: 'Invalid characters' });
     }
 
-    const reservedUsernames = ['admin', 'api', 'www', 'mail', 'ftp', 'login', 'register', 'auth', 'user', 'data'];
+    const reservedUsernames = ['admin', 'api', 'www', 'mail', 'ftp', 'login', 'register', 'auth', 'user', 'data', 'account'];
     if (reservedUsernames.includes(usernameCheck)) {
         return res.json({ available: false, reason: 'Reserved username' });
     }
@@ -153,18 +193,20 @@ app.post('/auth/login', (req, res) => {
         return res.status(400).json({ error: 'User profile not found' });
     }
 
+    const token = 'temp-token-' + user.uid;
+
     res.json({
         message: 'Login successful',
-        token: 'temp-token-' + user.uid,
+        token: token,
         username: user.username,
-        redirectUrl: `/${user.username}`
+        redirectUrl: `/account?token=${token}` // Include token in URL
     });
 });
 
 // Register route
 app.post('/auth/register', (req, res) => {
     const { username, email, password } = req.body;
-    const usernameNormalized = username.toLowerCase(); // Convert to lowercase
+    const usernameNormalized = username.toLowerCase();
     
     console.log(`Registration attempt: ${usernameNormalized} (${email})`);
     
@@ -199,8 +241,8 @@ app.post('/auth/register', (req, res) => {
     // Create user profile (public data) - all lowercase
     const newUser = {
         uid: newUID,
-        username: usernameNormalized, // Always lowercase
-        alias: usernameNormalized,    // Also lowercase now
+        username: usernameNormalized,
+        alias: usernameNormalized,
         createdAt: new Date().toISOString(),
         profileViews: 0,
         lastUpdated: new Date().toISOString()
@@ -210,7 +252,7 @@ app.post('/auth/register', (req, res) => {
     const newCredential = {
         uid: newUID,
         email: email.toLowerCase(),
-        password: password // In production, hash this!
+        password: password
     };
 
     // Add to arrays
@@ -223,10 +265,12 @@ app.post('/auth/register', (req, res) => {
     
     console.log(`New user registered: ${usernameNormalized} (UID: ${newUID})`);
 
+    const token = 'temp-token-' + newUID;
+
     res.status(201).json({
         message: 'Account created successfully',
         username: newUser.username,
-        redirectUrl: `/${newUser.username}`
+        redirectUrl: `/account?token=${token}` // Include token in URL
     });
 });
 
@@ -262,7 +306,7 @@ app.get('/:username', (req, res) => {
     const usernameNormalized = username.toLowerCase(); // Convert to lowercase
     
     // Skip static files AND reserved routes
-    if (username.includes('.') || username === 'auth' || username === 'user' || username === 'login' || username === 'data') {
+    if (username.includes('.') || username === 'auth' || username === 'user' || username === 'login' || username === 'data' || username === 'account') {
         return res.status(404).send('Not found');
     }
     
@@ -443,6 +487,34 @@ app.get('/:username', (req, res) => {
         </body>
         </html>
     `);
+});
+
+// Token verification route
+app.post('/auth/verify', (req, res) => {
+    const token = req.headers.authorization;
+    
+    if (!token || !token.startsWith('temp-token-')) {
+        return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    // Extract UID from token
+    const uid = parseInt(token.replace('temp-token-', ''));
+    const user = users.find(u => u.uid === uid);
+    
+    if (!user) {
+        return res.status(401).json({ error: 'User not found' });
+    }
+    
+    res.json({ 
+        message: 'Token valid', 
+        user: {
+            uid: user.uid,
+            username: user.username,
+            alias: user.alias,
+            profileViews: user.profileViews,
+            createdAt: user.createdAt
+        }
+    });
 });
 
 // Trust proxy for production (for HTTPS)
