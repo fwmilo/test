@@ -1,3 +1,7 @@
+console.log('🚀 Starting Brook.sh server...');
+console.log(`📂 Working directory: ${__dirname}`);
+console.log(`🔌 Target port: ${PORT}`);
+
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
@@ -985,4 +989,36 @@ app.post('/auth/logout', (req, res) => {
     }
     
     res.json({ success: true });
+});
+
+// Start server with error handling
+app.listen(PORT, '0.0.0.0', (err) => {
+    if (err) {
+        console.error('Failed to start server:', err);
+        process.exit(1);
+    }
+    console.log(`✓ Brook.sh server running on port ${PORT}`);
+    console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`✓ Sessions loaded: ${deviceSessions.size} device sessions, ${activeTokens.size} tokens`);
+});
+
+// Add global error handlers
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    console.error('Stack:', error.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully');
+    process.exit(0);
 });
