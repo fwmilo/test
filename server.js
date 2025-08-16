@@ -1,3 +1,34 @@
+// RAILWAY SNAPSHOT INSTANT MODE
+if (process.env.RAILWAY_SNAPSHOT_ONLY || process.argv.includes('--snapshot')) {
+    console.log('⚡ SNAPSHOT MODE - INSTANT EXIT');
+    process.exit(0);
+}
+
+// RAILWAY BUILD OPTIMIZATION  
+if (process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_GIT_COMMIT_SHA) {
+    console.log('⚡ Railway build detected - minimal startup');
+    
+    const express = require('express');
+    const app = express();
+    const PORT = process.env.PORT || 3000;
+    
+    app.get('/health', (req, res) => res.json({ status: 'build-ready' }));
+    app.get('/', (req, res) => res.send('Build Complete'));
+    
+    const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log('✓ BUILD SERVER READY');
+        if (process.send) process.send('ready');
+        
+        // Exit after 3 seconds to complete snapshot
+        setTimeout(() => {
+            server.close();
+            process.exit(0);
+        }, 3000);
+    });
+    
+    return;
+}
+
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
