@@ -205,21 +205,42 @@ async function requireAuth(req, res, next) {
 
 // Serve account dashboard
 app.get('/account', async (req, res) => {
-    const token = req.query.token || req.headers.authorization;
+    const tokenFromURL = req.query.token;
     
-    if (!token || !token.startsWith('temp-token-')) {
-        // Check if it's a request with localStorage token via client
+    // If no token in URL, serve page with localStorage check
+    if (!tokenFromURL) {
         return res.send(`
             <!DOCTYPE html>
             <html>
             <head>
                 <title>Brook.sh - Account</title>
+                <link rel="icon" type="image/png" href="https://i.postimg.cc/VLhBBn9h/void-animated.png">
             </head>
             <body>
                 <script>
                     const savedToken = localStorage.getItem('brook_auth_token');
                     if (savedToken) {
-                        window.location.href = '/account?token=' + savedToken;
+                        // Verify token with server
+                        fetch('/auth/verify', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ token: savedToken })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.valid) {
+                                // Token is valid, redirect to account with token for server processing
+                                window.location.href = '/account?token=' + savedToken;
+                            } else {
+                                // Token expired, clear and redirect to login
+                                localStorage.removeItem('brook_auth_token');
+                                localStorage.removeItem('brook_username');
+                                window.location.href = '/login?error=Please login to access your account';
+                            }
+                        })
+                        .catch(error => {
+                            window.location.href = '/login?error=Authentication failed';
+                        });
                     } else {
                         window.location.href = '/login?error=Please login to access your account';
                     }
@@ -228,12 +249,10 @@ app.get('/account', async (req, res) => {
             </html>
         `);
     }
-    
+
+    // Process token and serve account page
     try {
-        // Extract UID from token
-        const uid = parseInt(token.replace('temp-token-', ''));
-        
-        // Fetch from internal API
+        const uid = parseInt(tokenFromURL.replace('temp-token-', ''));
         const apiData = await fetchInternalAPI();
         const user = apiData.users.find(u => u.uid === uid);
         
@@ -241,7 +260,6 @@ app.get('/account', async (req, res) => {
             return res.redirect('/login?error=Invalid session. Please login again');
         }
         
-        // Rest of your existing account dashboard code...
         const daysSinceCreation = Math.floor((Date.now() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24));
         
         let accountHtml = fs.readFileSync(path.join(__dirname, 'account.html'), 'utf8');
@@ -260,10 +278,146 @@ app.get('/account', async (req, res) => {
         Object.keys(templateVars).forEach(key => {
             accountHtml = accountHtml.replace(new RegExp(key, 'g'), templateVars[key]);
         });
+
+        // Add script to clean URL and store token
+        const cleanupScript = `
+        <script>
+            // Store token in localStorage and clean URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            if (token) {
+                localStorage.setItem('brook_auth_token', token);
+                localStorage.setItem('brook_username', '${user.username}');
+                // Clean URL without refreshing page
+                window.history.replaceState({}, document.title, '/account');
+            }
+        </script>
+        `;
+        
+        accountHtml = accountHtml.replace('</body>', cleanupScript + '</body>');
         
         res.send(accountHtml);
     } catch (error) {
         return res.redirect('/login?error=Authentication failed');
+    }
+});
+
+// Update the login route to return clean redirect URL
+app.post('/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+    
+    console.log(`Login attempt: ${email}`);
+    
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    try {
+        const apiData = await fetchInternalAPI();
+        
+        console.log(`Total credentials in database: ${apiData.credentials.length}`);
+        console.log(`Total users in database: ${apiData.users.length}`);
+        
+        const userCredential = apiData.credentials.find(c => c.email.toLowerCase() === email.toLowerCase());
+        if (!userCredential) {
+            console.log(`No credentials found for email: ${email}`);
+            return res.status(400).json({ error: 'Invalid email or password' });
+        }
+
+        if (userCredential.password !== password) {
+            console.log(`Password mismatch for ${email}`);
+            return res.status(400).json({ error: 'Invalid email or password' });
+        }
+
+        const user = apiData.users.find(u => u.uid === userCredential.uid);
+        if (!user) {
+            console.log(`No user profile found for UID: ${userCredential.uid}`);
+            return res.status(400).json({ error: 'User profile not found' });
+        }
+
+        const token = 'temp-token-' + user.uid;
+        console.log(`Login successful for ${user.username}`);
+
+        res.json({
+            message: 'Login successful',
+            token: token,
+            username: user.username,
+            redirectUrl: `/account`  // Clean URL without token
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
+
+// Update the register route to return clean redirect URL
+app.post('/auth/register', async (req, res) => {
+    const { username, email, password } = req.body;
+    const usernameNormalized = username.toLowerCase();
+    
+    console.log(`Registration attempt: ${usernameNormalized} (${email})`);
+    
+    // Basic validation
+    if (!username || !email || !password) {
+        return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    if (usernameNormalized.length < 3 || usernameNormalized.length > 20) {
+        return res.status(400).json({ error: 'Username must be 3-20 characters' });
+    }
+
+    if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    try {
+        const apiData = await fetchInternalAPI();
+        
+        const existingUsername = apiData.users.find(user => user.username === usernameNormalized);
+        if (existingUsername) {
+            return res.status(400).json({ error: 'Username already taken' });
+        }
+
+        const existingEmail = apiData.credentials.find(cred => cred.email.toLowerCase() === email.toLowerCase());
+        if (existingEmail) {
+            return res.status(400).json({ error: 'Email already registered' });
+        }
+
+        const newUID = apiData.users.length + 1;
+
+        const newUser = {
+            uid: newUID,
+            username: usernameNormalized,
+            alias: usernameNormalized,
+            createdAt: new Date().toISOString(),
+            profileViews: 0,
+            lastUpdated: new Date().toISOString()
+        };
+
+        const newCredential = {
+            uid: newUID,
+            email: email.toLowerCase(),
+            password: password
+        };
+
+        apiData.users.push(newUser);
+        apiData.credentials.push(newCredential);
+        
+        saveAPIData(apiData);
+        
+        console.log(`New user registered: ${usernameNormalized} (UID: ${newUID})`);
+
+        const token = 'temp-token-' + newUID;
+
+        res.status(201).json({
+            message: 'Account created successfully',
+            token: token,
+            username: newUser.username,
+            redirectUrl: `/account`  // Clean URL without token
+        });
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Registration failed' });
     }
 });
 
@@ -304,125 +458,26 @@ app.get('/auth/check-username/:username', async (req, res) => {
     }
 });
 
-// Login route
-app.post('/auth/login', async (req, res) => {
-    const { email, password } = req.body;
+// Add token verification route
+app.post('/auth/verify', async (req, res) => {
+    const { token } = req.body;
     
-    console.log(`Login attempt: ${email}`);
-    
-    if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
+    if (!token || !token.startsWith('temp-token-')) {
+        return res.json({ valid: false });
     }
-
+    
     try {
-        // Fetch from internal API
+        const uid = parseInt(token.replace('temp-token-', ''));
         const apiData = await fetchInternalAPI();
+        const user = apiData.users.find(u => u.uid === uid);
         
-        // Find user credentials by email
-        const userCredential = apiData.credentials.find(c => c.email.toLowerCase() === email.toLowerCase());
-        if (!userCredential) {
-            return res.status(400).json({ error: 'Invalid email or password' });
-        }
-
-        // Check password
-        if (userCredential.password !== password) {
-            return res.status(400).json({ error: 'Invalid email or password' });
-        }
-
-        // Find user profile data
-        const user = apiData.users.find(u => u.uid === userCredential.uid);
         if (!user) {
-            return res.status(400).json({ error: 'User profile not found' });
+            return res.json({ valid: false });
         }
-
-        const token = 'temp-token-' + user.uid;
-
-        res.json({
-            message: 'Login successful',
-            token: token,
-            username: user.username,
-            redirectUrl: `/account?token=${token}`
-        });
+        
+        res.json({ valid: true, username: user.username });
     } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ error: 'Login failed' });
-    }
-});
-
-// Register route
-app.post('/auth/register', async (req, res) => {
-    const { username, email, password } = req.body;
-    const usernameNormalized = username.toLowerCase();
-    
-    console.log(`Registration attempt: ${usernameNormalized} (${email})`);
-    
-    // Basic validation
-    if (!username || !email || !password) {
-        return res.status(400).json({ error: 'All fields are required' });
-    }
-
-    if (usernameNormalized.length < 3 || usernameNormalized.length > 20) {
-        return res.status(400).json({ error: 'Username must be 3-20 characters' });
-    }
-
-    if (password.length < 6) {
-        return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
-
-    try {
-        // Load current API data
-        const apiData = await fetchInternalAPI();
-        
-        // Check for duplicates
-        const existingUsername = apiData.users.find(user => user.username === usernameNormalized);
-        if (existingUsername) {
-            return res.status(400).json({ error: 'Username already taken' });
-        }
-
-        const existingEmail = apiData.credentials.find(cred => cred.email.toLowerCase() === email.toLowerCase());
-        if (existingEmail) {
-            return res.status(400).json({ error: 'Email already registered' });
-        }
-
-        // Generate new UID
-        const newUID = apiData.users.length + 1;
-
-        // Create new user
-        const newUser = {
-            uid: newUID,
-            username: usernameNormalized,
-            alias: usernameNormalized,
-            createdAt: new Date().toISOString(),
-            profileViews: 0,
-            lastUpdated: new Date().toISOString()
-        };
-
-        // Create new credential
-        const newCredential = {
-            uid: newUID,
-            email: email.toLowerCase(),
-            password: password
-        };
-
-        // Add to API data
-        apiData.users.push(newUser);
-        apiData.credentials.push(newCredential);
-        
-        // Save updated data
-        saveAPIData(apiData);
-        
-        console.log(`New user registered: ${usernameNormalized} (UID: ${newUID})`);
-
-        const token = 'temp-token-' + newUID;
-
-        res.status(201).json({
-            message: 'Account created successfully',
-            username: newUser.username,
-            redirectUrl: `/account?token=${token}`
-        });
-    } catch (error) {
-        console.error('Registration error:', error);
-        res.status(500).json({ error: 'Registration failed' });
+        res.json({ valid: false });
     }
 });
 
