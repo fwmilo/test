@@ -1046,8 +1046,8 @@ app.post('/auth/logout', async (req, res) => {
     res.json({ success: true, message: 'Logged out successfully' });
 });
 
-// Start server with error handling
-app.listen(PORT, '0.0.0.0', (err) => {
+// Start server with Railway-specific error handling
+const server = app.listen(PORT, '0.0.0.0', (err) => {
     if (err) {
         console.error('Failed to start server:', err);
         process.exit(1);
@@ -1055,27 +1055,48 @@ app.listen(PORT, '0.0.0.0', (err) => {
     console.log(`✓ Brook.sh server running on port ${PORT}`);
     console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`✓ Sessions loaded: ${deviceSessions.size} device sessions, ${activeTokens.size} tokens`);
+    console.log(`✓ Health check available at: http://localhost:${PORT}/health`);
+    
+    // Signal to Railway that we're ready
+    if (process.send) {
+        process.send('ready');
+    }
 });
 
-// Add global error handlers - DON'T EXIT IMMEDIATELY
+// Handle Railway-specific shutdown gracefully
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully...');
+    
+    server.close(() => {
+        console.log('HTTP server closed');
+        
+        // Save sessions before shutdown
+        saveSessions()
+            .then(() => {
+                console.log('Sessions saved, exiting');
+                process.exit(0);
+            })
+            .catch((error) => {
+                console.error('Error saving sessions:', error);
+                process.exit(1);
+            });
+    });
+    
+    // Force exit after 10 seconds
+    setTimeout(() => {
+        console.error('Could not close connections in time, forcefully shutting down');
+        process.exit(1);
+    }, 10000);
+});
+
+// Add Railway-specific error handlers
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
     console.error('Stack:', error.stack);
-    // Don't exit immediately - let Railway handle it
+    // Don't exit immediately for Railway
 });
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    // Don't exit immediately - let Railway handle it
-});
-
-// Handle graceful shutdown - REMOVE THE IMMEDIATE EXIT
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down gracefully');
-    // Let Railway handle the shutdown - don't force exit
-});
-
-process.on('SIGINT', () => {
-    console.log('SIGINT received, shutting down gracefully');
-    // Let Railway handle the shutdown - don't force exit
+    // Don't exit immediately for Railway
 });
