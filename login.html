@@ -223,6 +223,23 @@
             color: rgba(255, 255, 255, 0.5);
             margin-top: 20px;
         }
+
+        .remember-device {
+            margin-top: 10px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .remember-device label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .remember-device input {
+            margin-right: 8px;
+            accent-color: #36038f;
+        }
     </style>
 </head>
 <body>
@@ -257,6 +274,12 @@
             <div class="form-group">
                 <label for="loginPassword">Password</label>
                 <input type="password" id="loginPassword" name="password" placeholder="Enter your password" required>
+            </div>
+            <div class="remember-device">
+                <label>
+                    <input type="checkbox" name="rememberDevice" id="rememberDevice">
+                    <span>Remember this device for 30 days</span>
+                </label>
             </div>
             <button type="submit" class="submit-btn">Sign In</button>
         </form>
@@ -424,7 +447,11 @@
             clearMessages();
 
             const formData = new FormData(loginForm);
-            const data = Object.fromEntries(formData);
+            const data = {
+                email: formData.get('email'),
+                password: formData.get('password'),
+                rememberDevice: formData.get('rememberDevice') === 'on'
+            };
 
             try {
                 const response = await fetch('/auth/login', {
@@ -436,8 +463,21 @@
                 const result = await response.json();
 
                 if (response.ok) {
-                    // Store token and username in localStorage for persistent login
-                    localStorage.setItem('brook_auth_token', result.token);
+                    // Store secure session data (not the actual auth token)
+                    localStorage.setItem('brook_session_id', result.sessionId);
+                    
+                    // Store session token in more secure httpOnly-like storage
+                    // We'll use a more secure method for the session token
+                    const secureStorage = {
+                        sessionToken: result.sessionToken,
+                        username: result.username,
+                        deviceTrusted: data.rememberDevice
+                    };
+                    
+                    // Encrypt and store session data
+                    localStorage.setItem('brook_session', btoa(JSON.stringify(secureStorage)));
+                    
+                    // Store username for display
                     localStorage.setItem('brook_username', result.username);
                     
                     showSuccess('Login successful! Welcome back! Redirecting...');

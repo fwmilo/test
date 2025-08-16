@@ -10,6 +10,96 @@ const PORT = process.env.PORT || 3000;
 // API secret key for internal requests
 const API_SECRET = process.env.API_SECRET || 'brook-sh-internal-api-key-2024';
 
+// Device and session management
+let deviceSessions = new Map(); // In production, use Redis/database
+
+// Generate device fingerprint
+function generateDeviceFingerprint(req) {
+    const userAgent = req.headers['user-agent'] || '';
+    const acceptLanguage = req.headers['accept-language'] || '';
+    const acceptEncoding = req.headers['accept-encoding'] || '';
+    
+    const fingerprint = crypto
+        .createHash('sha256')
+        .update(userAgent + acceptLanguage + acceptEncoding)
+        .digest('hex')
+        .substring(0, 16);
+    
+    return fingerprint;
+}
+
+// Create secure device session
+function createDeviceSession(uid, deviceFingerprint, rememberDevice = false) {
+    const sessionId = crypto.randomBytes(32).toString('hex');
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+    
+    const sessionData = {
+        uid,
+        deviceFingerprint,
+        sessionToken,
+        created: Date.now(),
+        lastUsed: Date.now(),
+        rememberDevice,
+        expiresAt: rememberDevice 
+            ? Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days for remembered devices
+            : Date.now() + (24 * 60 * 60 * 1000) // 24 hours for regular sessions
+    };
+    
+    deviceSessions.set(sessionId, sessionData);
+    
+    // Clean up expired sessions
+    cleanupExpiredSessions();
+    
+    return { sessionId, sessionToken };
+}
+
+// Validate device session
+function validateDeviceSession(sessionId, sessionToken, deviceFingerprint) {
+    const session = deviceSessions.get(sessionId);
+    
+    if (!session) {
+        return null;
+    }
+    
+    // Check if session expired
+    if (Date.now() > session.expiresAt) {
+        deviceSessions.delete(sessionId);
+        return null;
+    }
+    
+    // Check if device fingerprint matches
+    if (session.deviceFingerprint !== deviceFingerprint) {
+        deviceSessions.delete(sessionId);
+        return null;
+    }
+    
+    // Check if session token matches
+    if (session.sessionToken !== sessionToken) {
+        deviceSessions.delete(sessionId);
+        return null;
+    }
+    
+    // Update last used
+    session.lastUsed = Date.now();
+    
+    return session.uid;
+}
+
+// Clean up expired sessions
+function cleanupExpiredSessions() {
+    const now = Date.now();
+    for (let [sessionId, session] of deviceSessions) {
+        if (now > session.expiresAt) {
+            deviceSessions.delete(sessionId);
+        }
+    }
+}
+
+// Revoke device session (for logout)
+function revokeDeviceSession(sessionId) {
+    deviceSessions.delete(sessionId);
+}
+
 // Load API data
 function loadAPIData() {
     try {
@@ -147,73 +237,68 @@ app.use(express.static('.', {
 app.get('/', (req, res) => {
     let indexHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
     
-    // Add auto-login script to index.html
     const autoLoginScript = `
     <script>
-        // Check if user is already logged in
-        const savedToken = localStorage.getItem('brook_auth_token');
+        // Check device session instead of direct token
+        const sessionId = localStorage.getItem('brook_session_id');
+        const sessionData = localStorage.getItem('brook_session');
         const savedUsername = localStorage.getItem('brook_username');
         
-        if (savedToken && savedUsername) {
-            fetch('/auth/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: savedToken })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.valid) {
-                    // User is still logged in, show their username
-                    const authLink = document.querySelector('#auth-link') || document.querySelector('a[href="/login"]');
-                    if (authLink) {
-                        authLink.textContent = '@' + savedUsername;
-                        authLink.href = '/account';
-                        authLink.style.color = '#36038f';
-                        authLink.style.fontWeight = '600';
+        if (sessionId && sessionData && savedUsername) {
+            try {
+                const session = JSON.parse(atob(sessionData));
+                
+                fetch('/auth/verify-device', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        sessionId: sessionId,
+                        sessionToken: session.sessionToken
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.valid) {
+                        // User has valid device session, show username
+                        const authLink = document.querySelector('#auth-link') || document.querySelector('a[href="/login"]');
+                        if (authLink) {
+                            authLink.textContent = '@' + savedUsername;
+                            authLink.href = '/account';
+                            authLink.style.color = '#36038f';
+                            authLink.style.fontWeight = '600';
+                        }
+                    } else {
+                        // Session expired, clear everything
+                        localStorage.removeItem('brook_session_id');
+                        localStorage.removeItem('brook_session');
+                        localStorage.removeItem('brook_username');
+                        
+                        const authLink = document.querySelector('#auth-link') || document.querySelector('a[href="/login"]');
+                        if (authLink) {
+                            authLink.textContent = 'Login';
+                            authLink.href = '/login';
+                            authLink.style.color = '';
+                            authLink.style.fontWeight = '';
+                        }
                     }
-                } else {
-                    // Token expired, clear localStorage
-                    localStorage.removeItem('brook_auth_token');
-                    localStorage.removeItem('brook_username');
-                    // Reset to login button
+                })
+                .catch(error => {
+                    // Error checking session, reset to login
+                    localStorage.clear();
                     const authLink = document.querySelector('#auth-link') || document.querySelector('a[href="/login"]');
                     if (authLink) {
                         authLink.textContent = 'Login';
                         authLink.href = '/login';
-                        authLink.style.color = '';
-                        authLink.style.fontWeight = '';
                     }
-                }
-            })
-            .catch(error => {
-                console.log('Auth check failed:', error);
-                // Reset to login button on error
-                localStorage.removeItem('brook_auth_token');
-                localStorage.removeItem('brook_username');
-                const authLink = document.querySelector('#auth-link') || document.querySelector('a[href="/login"]');
-                if (authLink) {
-                    authLink.textContent = 'Login';
-                    authLink.href = '/login';
-                    authLink.style.color = '';
-                    authLink.style.fontWeight = '';
-                }
-            });
-        } else {
-            // No saved credentials, ensure it shows Login
-            const authLink = document.querySelector('#auth-link') || document.querySelector('a[href="/login"]');
-            if (authLink) {
-                authLink.textContent = 'Login';
-                authLink.href = '/login';
-                authLink.style.color = '';
-                authLink.style.fontWeight = '';
+                });
+            } catch (error) {
+                localStorage.clear();
             }
         }
     </script>
     `;
     
-    // Insert script before closing body tag
     indexHtml = indexHtml.replace('</body>', autoLoginScript + '</body>');
-    
     res.send(indexHtml);
 });
 
@@ -281,7 +366,7 @@ async function requireAuth(req, res, next) {
 app.get('/account', async (req, res) => {
     const tokenFromURL = req.query.token;
     
-    // If no token in URL, serve page with localStorage check
+    // If no token in URL, serve page with device session check
     if (!tokenFromURL) {
         return res.send(`
             <!DOCTYPE html>
@@ -292,31 +377,46 @@ app.get('/account', async (req, res) => {
             </head>
             <body>
                 <script>
-                    const savedToken = localStorage.getItem('brook_auth_token');
-                    if (savedToken) {
-                        // Verify token with server
-                        fetch('/auth/verify', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ token: savedToken })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.valid) {
-                                // Token is valid, redirect to account with token for server processing
-                                window.location.href = '/account?token=' + savedToken;
-                            } else {
-                                // Token expired, clear and redirect to clean login
-                                localStorage.removeItem('brook_auth_token');
-                                localStorage.removeItem('brook_username');
+                    // Check for secure device session
+                    const sessionId = localStorage.getItem('brook_session_id');
+                    const sessionData = localStorage.getItem('brook_session');
+                    
+                    if (sessionId && sessionData) {
+                        try {
+                            const session = JSON.parse(atob(sessionData));
+                            
+                            // Verify device session with server
+                            fetch('/auth/verify-device', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                    sessionId: sessionId,
+                                    sessionToken: session.sessionToken
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.valid) {
+                                    // Create temporary access token for this session
+                                    window.location.href = '/account?token=' + data.accessToken;
+                                } else {
+                                    // Session expired or invalid, clear and redirect
+                                    localStorage.removeItem('brook_session_id');
+                                    localStorage.removeItem('brook_session');
+                                    localStorage.removeItem('brook_username');
+                                    window.location.href = '/login';
+                                }
+                            })
+                            .catch(error => {
                                 window.location.href = '/login';
-                            }
-                        })
-                        .catch(error => {
+                            });
+                        } catch (error) {
+                            // Invalid session data
+                            localStorage.clear();
                             window.location.href = '/login';
-                        });
+                        }
                     } else {
-                        // No token, redirect to clean login
+                        // No session, redirect to login
                         window.location.href = '/login';
                     }
                 </script>
@@ -327,7 +427,11 @@ app.get('/account', async (req, res) => {
 
     // Process token and serve account page
     try {
-        const uid = parseInt(tokenFromURL.replace('temp-token-', ''));
+        const uid = validateToken(tokenFromURL);
+        if (!uid) {
+            return res.redirect('/login');
+        }
+        
         const apiData = await fetchInternalAPI();
         const user = apiData.users.find(u => u.uid === uid);
         
@@ -377,9 +481,10 @@ app.get('/account', async (req, res) => {
     }
 });
 
-// Update the login route to return clean redirect URL
+// Update the login route:
+
 app.post('/auth/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, rememberDevice } = req.body;
     
     console.log(`Login attempt: ${email}`);
     
@@ -390,34 +495,36 @@ app.post('/auth/login', async (req, res) => {
     try {
         const apiData = await fetchInternalAPI();
         
-        console.log(`Total credentials in database: ${apiData.credentials.length}`);
-        console.log(`Total users in database: ${apiData.users.length}`);
-        
         const userCredential = apiData.credentials.find(c => c.email.toLowerCase() === email.toLowerCase());
         if (!userCredential) {
-            console.log(`No credentials found for email: ${email}`);
             return res.status(400).json({ error: 'Invalid email or password' });
         }
 
         if (userCredential.password !== password) {
-            console.log(`Password mismatch for ${email}`);
             return res.status(400).json({ error: 'Invalid email or password' });
         }
 
         const user = apiData.users.find(u => u.uid === userCredential.uid);
         if (!user) {
-            console.log(`No user profile found for UID: ${userCredential.uid}`);
             return res.status(400).json({ error: 'User profile not found' });
         }
 
-        const token = createUserToken(user.uid);
-        console.log(`Login successful for ${user.username}`);
+        // Generate device fingerprint and create secure session
+        const deviceFingerprint = generateDeviceFingerprint(req);
+        const { sessionId, sessionToken } = createDeviceSession(user.uid, deviceFingerprint, rememberDevice);
+        
+        console.log(`Login successful for ${user.username} on device ${deviceFingerprint.substring(0, 8)}...`);
+
+        // Create temporary display token (short-lived)
+        const tempToken = createUserToken(user.uid);
 
         res.json({
             message: 'Login successful',
-            token: token,
+            token: tempToken, // This will be replaced by secure session
             username: user.username,
-            redirectUrl: `/account`  // Clean URL without token
+            sessionId: sessionId,
+            sessionToken: sessionToken,
+            redirectUrl: `/account`
         });
     } catch (error) {
         console.error('Login error:', error);
@@ -776,6 +883,58 @@ app.get('/debug', (req, res) => {
         // Don't show any credential info in debug
         credentialsCount: apiData.credentials.length
     });
+});
+
+// Add new route for device session verification:
+
+app.post('/auth/verify-device', async (req, res) => {
+    const { sessionId, sessionToken } = req.body;
+    
+    if (!sessionId || !sessionToken) {
+        return res.json({ valid: false });
+    }
+    
+    try {
+        // Generate device fingerprint for this request
+        const deviceFingerprint = generateDeviceFingerprint(req);
+        
+        // Validate device session
+        const uid = validateDeviceSession(sessionId, sessionToken, deviceFingerprint);
+        
+        if (!uid) {
+            return res.json({ valid: false });
+        }
+        
+        // Get user data
+        const apiData = await fetchInternalAPI();
+        const user = apiData.users.find(u => u.uid === uid);
+        
+        if (!user) {
+            return res.json({ valid: false });
+        }
+        
+        // Create temporary access token for this session
+        const accessToken = createUserToken(uid);
+        
+        res.json({ 
+            valid: true, 
+            username: user.username,
+            accessToken: accessToken
+        });
+    } catch (error) {
+        res.json({ valid: false });
+    }
+});
+
+// Add logout route to revoke device session
+app.post('/auth/logout', (req, res) => {
+    const { sessionId } = req.body;
+    
+    if (sessionId) {
+        revokeDeviceSession(sessionId);
+    }
+    
+    res.json({ success: true });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
