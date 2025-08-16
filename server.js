@@ -181,7 +181,7 @@ async function requireAuth(req, res, next) {
     const token = req.query.token || req.headers.authorization;
     
     if (!token || !token.startsWith('temp-token-')) {
-        return res.redirect('/login?error=Please login to access your account');
+        return res.redirect('/login');
     }
     
     try {
@@ -193,13 +193,13 @@ async function requireAuth(req, res, next) {
         const user = apiData.users.find(u => u.uid === uid);
         
         if (!user) {
-            return res.redirect('/login?error=Invalid session. Please login again');
+            return res.redirect('/login');
         }
         
         req.user = user;
         next();
     } catch (error) {
-        return res.redirect('/login?error=Authentication failed');
+        return res.redirect('/login');
     }
 }
 
@@ -232,17 +232,18 @@ app.get('/account', async (req, res) => {
                                 // Token is valid, redirect to account with token for server processing
                                 window.location.href = '/account?token=' + savedToken;
                             } else {
-                                // Token expired, clear and redirect to login
+                                // Token expired, clear and redirect to clean login
                                 localStorage.removeItem('brook_auth_token');
                                 localStorage.removeItem('brook_username');
-                                window.location.href = '/login?error=Please login to access your account';
+                                window.location.href = '/login';
                             }
                         })
                         .catch(error => {
-                            window.location.href = '/login?error=Authentication failed';
+                            window.location.href = '/login';
                         });
                     } else {
-                        window.location.href = '/login?error=Please login to access your account';
+                        // No token, redirect to clean login
+                        window.location.href = '/login';
                     }
                 </script>
             </body>
@@ -257,7 +258,7 @@ app.get('/account', async (req, res) => {
         const user = apiData.users.find(u => u.uid === uid);
         
         if (!user) {
-            return res.redirect('/login?error=Invalid session. Please login again');
+            return res.redirect('/login');
         }
         
         const daysSinceCreation = Math.floor((Date.now() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24));
@@ -298,7 +299,7 @@ app.get('/account', async (req, res) => {
         
         res.send(accountHtml);
     } catch (error) {
-        return res.redirect('/login?error=Authentication failed');
+        return res.redirect('/login');
     }
 });
 
