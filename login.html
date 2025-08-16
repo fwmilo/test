@@ -303,6 +303,7 @@
 
         let usernameCheckTimeout;
         let isUsernameAvailable = false;
+        let isCheckingUsername = false;
 
         // Form toggle
         loginToggle.addEventListener('click', () => {
@@ -328,11 +329,22 @@
             usernameCounter.textContent = `${length}/20`;
 
             clearTimeout(usernameCheckTimeout);
-            availabilityCheck.textContent = '';
+            
+            // Reset availability status
             isUsernameAvailable = false;
+            isCheckingUsername = false;
+            
+            // Clear availability display
+            availabilityCheck.textContent = '';
+            availabilityCheck.className = 'availability-check';
+            
             updateRegisterButton();
 
-            if (length >= 3 && length <= 20) {
+            if (length >= 3 && length <= 20 && /^[a-zA-Z0-9_-]+$/.test(username)) {
+                isCheckingUsername = true;
+                availabilityCheck.textContent = 'Checking...';
+                availabilityCheck.className = 'availability-check';
+                
                 usernameCheckTimeout = setTimeout(() => {
                     checkUsernameAvailability(username);
                 }, 500);
@@ -343,6 +355,8 @@
             try {
                 const response = await fetch(`/auth/check-username/${username}`);
                 const result = await response.json();
+                
+                isCheckingUsername = false;
                 
                 if (result.available) {
                     availabilityCheck.textContent = '✓ Available';
@@ -356,14 +370,36 @@
                 updateRegisterButton();
             } catch (error) {
                 console.error('Username check failed:', error);
+                isCheckingUsername = false;
+                availabilityCheck.textContent = '⚠ Check failed';
+                availabilityCheck.className = 'availability-check unavailable';
+                // Allow submission even if check failed
+                isUsernameAvailable = true;
+                updateRegisterButton();
             }
         }
 
         function updateRegisterButton() {
             const username = usernameInput.value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            
+            // Basic validation
             const isValidLength = username.length >= 3 && username.length <= 20;
-            registerBtn.disabled = !isValidLength || !isUsernameAvailable;
+            const isValidPattern = /^[a-zA-Z0-9_-]+$/.test(username);
+            const hasEmail = email.length > 0;
+            const hasPassword = password.length >= 6;
+            
+            // Enable button if basic validation passes
+            const basicRequirementsMet = isValidLength && isValidPattern && hasEmail && hasPassword;
+            
+            // Only disable if basic requirements aren't met OR if we specifically know username is unavailable
+            registerBtn.disabled = !basicRequirementsMet || (availabilityCheck.className.includes('unavailable') && !isCheckingUsername);
         }
+
+        // Also update when email/password fields change
+        document.getElementById('registerEmail').addEventListener('input', updateRegisterButton);
+        document.getElementById('registerPassword').addEventListener('input', updateRegisterButton);
 
         function clearMessages() {
             errorMessage.style.display = 'none';
@@ -416,11 +452,6 @@
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             clearMessages();
-
-            if (!isUsernameAvailable) {
-                showError('Please choose an available username.');
-                return;
-            }
 
             const formData = new FormData(registerForm);
             const data = Object.fromEntries(formData);
