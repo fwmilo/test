@@ -473,8 +473,9 @@
                 });
 
                 const result = await response.json();
+                console.log('Login response:', result); // Debug log
 
-                if (response.ok) {
+                if (response.ok && result.sessionId && result.sessionToken) {
                     // Clear any existing session data first
                     localStorage.clear();
                     sessionStorage.clear();
@@ -498,11 +499,12 @@
                         window.location.href = '/account';
                     }, 1000);
                 } else {
-                    showError(result.error);
+                    showError(result.error || 'Login failed');
                     submitBtn.disabled = false;
                     submitBtn.textContent = originalText;
                 }
             } catch (error) {
+                console.error('Login network error:', error);
                 showError('Network error. Please try again.');
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;

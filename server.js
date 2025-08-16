@@ -419,6 +419,8 @@ async function requireAuth(req, res, next) {
 app.get('/account', async (req, res) => {
     const tokenFromURL = req.query.token;
     
+    console.log('Account page access - token from URL:', tokenFromURL ? 'present' : 'none');
+    
     // If no token in URL, serve page with device session check
     if (!tokenFromURL) {
         return res.send(`
@@ -429,14 +431,23 @@ app.get('/account', async (req, res) => {
                 <link rel="icon" type="image/png" href="https://i.postimg.cc/VLhBBn9h/void-animated.png">
             </head>
             <body>
+                <div id="loading" style="text-align: center; padding: 50px; font-family: Arial; color: white; background: #0a0a0a; min-height: 100vh;">
+                    <h2>Checking your session...</h2>
+                </div>
                 <script>
+                    console.log('Account page: Checking device session...');
+                    
                     // Check for secure device session
                     const sessionId = localStorage.getItem('brook_session_id');
                     const sessionData = localStorage.getItem('brook_session');
                     
+                    console.log('Session ID:', sessionId ? 'present' : 'none');
+                    console.log('Session Data:', sessionData ? 'present' : 'none');
+                    
                     if (sessionId && sessionData) {
                         try {
                             const session = JSON.parse(atob(sessionData));
+                            console.log('Parsed session:', session);
                             
                             // Verify device session with server
                             fetch('/auth/verify-device', {
@@ -449,27 +460,28 @@ app.get('/account', async (req, res) => {
                             })
                             .then(response => response.json())
                             .then(data => {
+                                console.log('Device verification response:', data);
                                 if (data.valid) {
                                     // Create temporary access token for this session
                                     window.location.href = '/account?token=' + data.accessToken;
                                 } else {
-                                    // Session expired or invalid, clear and redirect
-                                    localStorage.removeItem('brook_session_id');
-                                    localStorage.removeItem('brook_session');
-                                    localStorage.removeItem('brook_username');
+                                    console.log('Session invalid, clearing and redirecting to login');
+                                    localStorage.clear();
+                                    sessionStorage.clear();
                                     window.location.href = '/login';
                                 }
                             })
                             .catch(error => {
+                                console.error('Device verification error:', error);
                                 window.location.href = '/login';
                             });
                         } catch (error) {
-                            // Invalid session data
+                            console.error('Session parsing error:', error);
                             localStorage.clear();
                             window.location.href = '/login';
                         }
                     } else {
-                        // No session, redirect to login
+                        console.log('No session found, redirecting to login');
                         window.location.href = '/login';
                     }
                 </script>
@@ -480,8 +492,12 @@ app.get('/account', async (req, res) => {
 
     // Process token and serve account page
     try {
+        console.log('Account page: Processing token...', tokenFromURL);
         const uid = validateToken(tokenFromURL);
+        console.log('Token validation result - UID:', uid);
+        
         if (!uid) {
+            console.log('Invalid token, redirecting to login');
             return res.redirect('/login');
         }
         
@@ -489,8 +505,11 @@ app.get('/account', async (req, res) => {
         const user = apiData.users.find(u => u.uid === uid);
         
         if (!user) {
+            console.log('User not found for UID:', uid);
             return res.redirect('/login');
         }
+        
+        console.log('Account page: Serving account for user:', user.username);
         
         const daysSinceCreation = Math.floor((Date.now() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24));
         
@@ -511,30 +530,14 @@ app.get('/account', async (req, res) => {
             accountHtml = accountHtml.replace(new RegExp(key, 'g'), templateVars[key]);
         });
 
-        // Add script to clean URL and store token
-        const cleanupScript = `
-        <script>
-            // Store token in localStorage and clean URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
-            if (token) {
-                localStorage.setItem('brook_auth_token', token);
-                localStorage.setItem('brook_username', '${user.username}');
-                // Clean URL without refreshing page
-                window.history.replaceState({}, document.title, '/account');
-            }
-        </script>
-        `;
-        
-        accountHtml = accountHtml.replace('</body>', cleanupScript + '</body>');
-        
         res.send(accountHtml);
     } catch (error) {
+        console.error('Account page error:', error);
         return res.redirect('/login');
     }
 });
 
-// Replace your login route temporarily with this simpler version:
+// Replace the existing login route (around line 400) with this fixed version:
 
 app.post('/auth/login', async (req, res) => {
     const { email, password, rememberDevice } = req.body;
@@ -564,16 +567,21 @@ app.post('/auth/login', async (req, res) => {
 
         console.log(`Login successful for ${user.username}`);
 
-        // Simple temporary approach - just use old token method for now
-        const token = 'temp-token-' + user.uid;
+        // Generate device fingerprint and create secure session
+        const deviceFingerprint = generateDeviceFingerprint(req);
+        const { sessionId, sessionToken } = createDeviceSession(user.uid, deviceFingerprint, rememberDevice);
 
+        // Create temporary display token
+        const tempToken = createUserToken(user.uid);
+
+        // Send response that matches what login.html expects
         res.json({
             message: 'Login successful',
-            token: token,
+            token: tempToken,
             username: user.username,
-            sessionId: 'simple-session-' + user.uid,
-            sessionToken: 'simple-token-' + Date.now(),
-            redirectUrl: `/account`
+            sessionId: sessionId,
+            sessionToken: sessionToken,
+            redirectUrl: `/account`  // This is what login.html expects
         });
     } catch (error) {
         console.error('Login error:', error);
