@@ -99,25 +99,26 @@ app.get('/login', (req, res) => {
 // Username availability check route
 app.get('/auth/check-username/:username', (req, res) => {
     const { username } = req.params;
+    const usernameCheck = username.toLowerCase(); // Convert to lowercase
     
-    console.log(`Checking username: ${username}`);
+    console.log(`Checking username: ${usernameCheck}`);
     
     // Basic validation
-    if (username.length < 3 || username.length > 20) {
+    if (usernameCheck.length < 3 || usernameCheck.length > 20) {
         return res.json({ available: false, reason: 'Invalid length' });
     }
 
-    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+    if (!/^[a-zA-Z0-9_-]+$/.test(usernameCheck)) {
         return res.json({ available: false, reason: 'Invalid characters' });
     }
 
     const reservedUsernames = ['admin', 'api', 'www', 'mail', 'ftp', 'login', 'register', 'auth', 'user', 'data'];
-    if (reservedUsernames.includes(username.toLowerCase())) {
+    if (reservedUsernames.includes(usernameCheck)) {
         return res.json({ available: false, reason: 'Reserved username' });
     }
 
-    // Check if username already exists
-    const existingUser = users.find(user => user.username.toLowerCase() === username.toLowerCase());
+    // Check if username already exists (case insensitive)
+    const existingUser = users.find(user => user.username === usernameCheck);
     if (existingUser) {
         return res.json({ available: false, reason: 'Username taken' });
     }
@@ -163,15 +164,16 @@ app.post('/auth/login', (req, res) => {
 // Register route
 app.post('/auth/register', (req, res) => {
     const { username, email, password } = req.body;
+    const usernameNormalized = username.toLowerCase(); // Convert to lowercase
     
-    console.log(`Registration attempt: ${username} (${email})`);
+    console.log(`Registration attempt: ${usernameNormalized} (${email})`);
     
     // Basic validation
     if (!username || !email || !password) {
         return res.status(400).json({ error: 'All fields are required' });
     }
 
-    if (username.length < 3 || username.length > 20) {
+    if (usernameNormalized.length < 3 || usernameNormalized.length > 20) {
         return res.status(400).json({ error: 'Username must be 3-20 characters' });
     }
 
@@ -179,8 +181,8 @@ app.post('/auth/register', (req, res) => {
         return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    // Check for duplicates in users
-    const existingUsername = users.find(user => user.username.toLowerCase() === username.toLowerCase());
+    // Check for duplicates in users (case insensitive)
+    const existingUsername = users.find(user => user.username === usernameNormalized);
     if (existingUsername) {
         return res.status(400).json({ error: 'Username already taken' });
     }
@@ -194,11 +196,11 @@ app.post('/auth/register', (req, res) => {
     // Generate new UID
     const newUID = users.length + 1;
 
-    // Create user profile (public data)
+    // Create user profile (public data) - all lowercase
     const newUser = {
         uid: newUID,
-        username: username.toLowerCase(),
-        alias: username, // Display name/alias
+        username: usernameNormalized, // Always lowercase
+        alias: usernameNormalized,    // Also lowercase now
         createdAt: new Date().toISOString(),
         profileViews: 0,
         lastUpdated: new Date().toISOString()
@@ -219,7 +221,7 @@ app.post('/auth/register', (req, res) => {
     saveUsers(users);
     saveCredentials(credentials);
     
-    console.log(`New user registered: ${username} (UID: ${newUID})`);
+    console.log(`New user registered: ${usernameNormalized} (UID: ${newUID})`);
 
     res.status(201).json({
         message: 'Account created successfully',
@@ -237,19 +239,19 @@ app.put('/auth/update-alias', (req, res) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     
-    const user = users.find(u => u.username === username);
+    const user = users.find(u => u.username === username.toLowerCase());
     if (!user) {
         return res.status(404).json({ error: 'User not found' });
     }
     
-    // Update alias
-    user.alias = newAlias;
+    // Update alias (keep lowercase)
+    user.alias = newAlias.toLowerCase();
     user.lastUpdated = new Date().toISOString();
     
     // Save to JSON database
     saveUsers(users);
     
-    console.log(`User ${username} updated alias to: ${newAlias}`);
+    console.log(`User ${username} updated alias to: ${newAlias.toLowerCase()}`);
     
     res.json({ message: 'Alias updated successfully' });
 });
@@ -257,18 +259,19 @@ app.put('/auth/update-alias', (req, res) => {
 // User profile page
 app.get('/:username', (req, res) => {
     const { username } = req.params;
+    const usernameNormalized = username.toLowerCase(); // Convert to lowercase
     
     // Skip static files AND reserved routes
     if (username.includes('.') || username === 'auth' || username === 'user' || username === 'login' || username === 'data') {
         return res.status(404).send('Not found');
     }
     
-    const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    const user = users.find(u => u.username === usernameNormalized);
     if (!user) {
         return res.status(404).send(`
             <div style="text-align: center; margin-top: 100px; font-family: Arial; color: white; background: #0a0a0a; min-height: 100vh;">
                 <h1>User not found</h1>
-                <p>The profile @${username} doesn't exist.</p>
+                <p>The profile @${usernameNormalized} doesn't exist.</p>
                 <a href="/login" style="color: #36038f;">Create an account</a>
             </div>
         `);
@@ -281,7 +284,7 @@ app.get('/:username', (req, res) => {
 
     const daysSinceCreation = Math.floor((Date.now() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24));
 
-    // Generate profile page with tooltip on username
+    // Generate profile page with lowercase username
     res.send(`
         <!DOCTYPE html>
         <html lang="en">
