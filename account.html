@@ -353,7 +353,7 @@
                 <div class="avatar">{{AVATAR_LETTER}}</div>
                 <span>{{DISPLAY_USERNAME}}</span>
             </div>
-            <a href="/login" class="logout-btn">Logout</a>
+            <a href="#" class="logout-btn" onclick="logout()">Logout</a>
         </div>
     </header>
 
@@ -539,6 +539,27 @@
     </div>
 
     <script>
+        function logout() {
+    // Clear localStorage
+    localStorage.removeItem('brook_auth_token');
+    localStorage.removeItem('brook_username');
+    
+    // Redirect to login
+    window.location.href = '/login';
+}
+
+// Auto-redirect if no token in localStorage
+const savedToken = localStorage.getItem('brook_auth_token');
+if (!savedToken) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromURL = urlParams.get('token');
+    
+    if (tokenFromURL) {
+        // Save token to localStorage for next time
+        localStorage.setItem('brook_auth_token', tokenFromURL);
+    }
+}
+
         // Simple JavaScript to update UI elements (server will replace the placeholders)
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Brook.sh Account Dashboard loaded');

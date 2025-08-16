@@ -109,7 +109,66 @@ app.use(express.static('.', {
 
 // Serve main page
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    let indexHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+    
+    // Add auto-login script to index.html
+    const autoLoginScript = `
+    <script>
+        // Check if user is already logged in
+        const savedToken = localStorage.getItem('brook_auth_token');
+        if (savedToken) {
+            fetch('/auth/check?token=' + savedToken)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.authenticated) {
+                        // User is still logged in, show account link
+                        const loginLink = document.querySelector('a[href="/login"]');
+                        if (loginLink) {
+                            loginLink.textContent = data.username;
+                            loginLink.href = '/account?token=' + savedToken;
+                        }
+                    } else {
+                        // Token expired, clear localStorage
+                        localStorage.removeItem('brook_auth_token');
+                        localStorage.removeItem('brook_username');
+                    }
+                })
+                .catch(error => console.log('Auth check failed:', error));
+        }
+    </script>
+    `;
+    
+    // Insert script before closing body tag
+    indexHtml = indexHtml.replace('</body>', autoLoginScript + '</body>');
+    
+    res.send(indexHtml);
+});
+
+// Auto-login check route
+app.get('/auth/check', async (req, res) => {
+    const token = req.query.token || req.headers.authorization;
+    
+    if (!token || !token.startsWith('temp-token-')) {
+        return res.json({ authenticated: false });
+    }
+    
+    try {
+        const uid = parseInt(token.replace('temp-token-', ''));
+        const apiData = await fetchInternalAPI();
+        const user = apiData.users.find(u => u.uid === uid);
+        
+        if (!user) {
+            return res.json({ authenticated: false });
+        }
+        
+        res.json({ 
+            authenticated: true, 
+            username: user.username,
+            redirectUrl: `/account?token=${token}`
+        });
+    } catch (error) {
+        res.json({ authenticated: false });
+    }
 });
 
 // Serve login page
@@ -145,31 +204,67 @@ async function requireAuth(req, res, next) {
 }
 
 // Serve account dashboard
-app.get('/account', requireAuth, (req, res) => {
-    const user = req.user;
-    const daysSinceCreation = Math.floor((Date.now() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24));
+app.get('/account', async (req, res) => {
+    const token = req.query.token || req.headers.authorization;
     
-    // Read the account template
-    let accountHtml = fs.readFileSync(path.join(__dirname, 'account.html'), 'utf8');
+    if (!token || !token.startsWith('temp-token-')) {
+        // Check if it's a request with localStorage token via client
+        return res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Brook.sh - Account</title>
+            </head>
+            <body>
+                <script>
+                    const savedToken = localStorage.getItem('brook_auth_token');
+                    if (savedToken) {
+                        window.location.href = '/account?token=' + savedToken;
+                    } else {
+                        window.location.href = '/login?error=Please login to access your account';
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+    }
     
-    // Create template variables
-    const templateVars = {
-        '{{USERNAME}}': user.username,
-        '{{DISPLAY_USERNAME}}': `@${user.username}`,
-        '{{AVATAR_LETTER}}': user.username.charAt(0).toUpperCase(),
-        '{{USER_UID}}': user.uid,
-        '{{PROFILE_VIEWS}}': user.profileViews,
-        '{{MEMBER_SINCE}}': new Date(user.createdAt).toLocaleDateString(),
-        '{{PROFILE_LINK}}': `/${user.username}`,
-        '{{DAYS_SINCE_CREATION}}': daysSinceCreation
-    };
-    
-    // Replace all template variables
-    Object.keys(templateVars).forEach(key => {
-        accountHtml = accountHtml.replace(new RegExp(key, 'g'), templateVars[key]);
-    });
-    
-    res.send(accountHtml);
+    try {
+        // Extract UID from token
+        const uid = parseInt(token.replace('temp-token-', ''));
+        
+        // Fetch from internal API
+        const apiData = await fetchInternalAPI();
+        const user = apiData.users.find(u => u.uid === uid);
+        
+        if (!user) {
+            return res.redirect('/login?error=Invalid session. Please login again');
+        }
+        
+        // Rest of your existing account dashboard code...
+        const daysSinceCreation = Math.floor((Date.now() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24));
+        
+        let accountHtml = fs.readFileSync(path.join(__dirname, 'account.html'), 'utf8');
+        
+        const templateVars = {
+            '{{USERNAME}}': user.username,
+            '{{DISPLAY_USERNAME}}': `@${user.username}`,
+            '{{AVATAR_LETTER}}': user.username.charAt(0).toUpperCase(),
+            '{{USER_UID}}': user.uid,
+            '{{PROFILE_VIEWS}}': user.profileViews,
+            '{{MEMBER_SINCE}}': new Date(user.createdAt).toLocaleDateString(),
+            '{{PROFILE_LINK}}': `/${user.username}`,
+            '{{DAYS_SINCE_CREATION}}': daysSinceCreation
+        };
+        
+        Object.keys(templateVars).forEach(key => {
+            accountHtml = accountHtml.replace(new RegExp(key, 'g'), templateVars[key]);
+        });
+        
+        res.send(accountHtml);
+    } catch (error) {
+        return res.redirect('/login?error=Authentication failed');
+    }
 });
 
 // Username availability check
