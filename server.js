@@ -246,23 +246,40 @@ loadSessions();
 // Middleware
 app.use(express.json());
 
-// Railway health check endpoint
+// Railway health check endpoint - IMPROVED
 app.get('/health', (req, res) => {
-    res.status(200).json({ 
+    const health = {
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        environment: process.env.NODE_ENV || 'development'
-    });
-});
-
-// Railway readiness check
-app.get('/ready', (req, res) => {
-    res.status(200).json({ 
-        status: 'ready',
+        uptime: Math.floor(process.uptime()),
+        environment: process.env.NODE_ENV || 'development',
+        port: PORT,
+        memory: process.memoryUsage(),
         sessions: deviceSessions.size,
         tokens: activeTokens.size
-    });
+    };
+    
+    console.log('Health check requested:', health.status);
+    res.status(200).json(health);
+});
+
+// Railway readiness check - IMPROVED
+app.get('/ready', (req, res) => {
+    const ready = {
+        status: 'ready',
+        timestamp: new Date().toISOString(),
+        sessions: deviceSessions.size,
+        tokens: activeTokens.size,
+        uptime: Math.floor(process.uptime())
+    };
+    
+    console.log('Readiness check requested:', ready.status);
+    res.status(200).json(ready);
+});
+
+// Add a simple ping endpoint
+app.get('/ping', (req, res) => {
+    res.status(200).send('pong');
 });
 
 // PROTECTED API ENDPOINT - Only accessible with secret header
@@ -1046,7 +1063,7 @@ app.post('/auth/logout', async (req, res) => {
     res.json({ success: true, message: 'Logged out successfully' });
 });
 
-// Start server with Railway-specific error handling
+// Start server with Railway-optimized error handling
 const server = app.listen(PORT, '0.0.0.0', (err) => {
     if (err) {
         console.error('Failed to start server:', err);
@@ -1055,48 +1072,77 @@ const server = app.listen(PORT, '0.0.0.0', (err) => {
     console.log(`✓ Brook.sh server running on port ${PORT}`);
     console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`✓ Sessions loaded: ${deviceSessions.size} device sessions, ${activeTokens.size} tokens`);
-    console.log(`✓ Health check available at: http://localhost:${PORT}/health`);
+    console.log(`✓ Health check available at: http://0.0.0.0:${PORT}/health`);
     
-    // Signal to Railway that we're ready
+    // Signal to Railway that we're ready (Railway-specific)
     if (process.send) {
         process.send('ready');
     }
+    
+    // Additional Railway readiness signal
+    console.log('RAILWAY_READY: Server is ready to accept connections');
 });
 
-// Handle Railway-specific shutdown gracefully
+// Ensure server starts listening immediately
+server.on('listening', () => {
+    console.log(`✓ Server is actively listening on port ${PORT}`);
+    console.log(`✓ Health endpoint: http://0.0.0.0:${PORT}/health`);
+});
+
+// Handle server errors
+server.on('error', (error) => {
+    console.error('Server error:', error);
+    if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use`);
+        process.exit(1);
+    }
+});
+
+// Railway-optimized shutdown handling
 process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down gracefully...');
+    console.log('SIGTERM received, starting graceful shutdown...');
     
-    server.close(() => {
+    // Set a timeout for graceful shutdown
+    const shutdownTimeout = setTimeout(() => {
+        console.error('Graceful shutdown timeout, forcing exit');
+        process.exit(1);
+    }, 5000); // 5 seconds timeout
+    
+    server.close(async (err) => {
+        clearTimeout(shutdownTimeout);
+        
+        if (err) {
+            console.error('Error during server close:', err);
+            process.exit(1);
+        }
+        
         console.log('HTTP server closed');
         
-        // Save sessions before shutdown
-        saveSessions()
-            .then(() => {
-                console.log('Sessions saved, exiting');
-                process.exit(0);
-            })
-            .catch((error) => {
-                console.error('Error saving sessions:', error);
-                process.exit(1);
-            });
+        try {
+            // Quick session save
+            await saveSessions();
+            console.log('Sessions saved, exiting gracefully');
+            process.exit(0);
+        } catch (error) {
+            console.error('Error saving sessions during shutdown:', error);
+            process.exit(0); // Exit anyway to prevent hanging
+        }
     });
-    
-    // Force exit after 10 seconds
-    setTimeout(() => {
-        console.error('Could not close connections in time, forcefully shutting down');
-        process.exit(1);
-    }, 10000);
 });
 
-// Add Railway-specific error handlers
+// Railway-friendly error handlers (don't crash immediately)
 process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', error);
+    console.error('Uncaught Exception:', error.message);
     console.error('Stack:', error.stack);
-    // Don't exit immediately for Railway
+    // Log but don't exit - let Railway handle it
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    // Don't exit immediately for Railway
+    console.error('Unhandled Rejection:', reason);
+    // Log but don't exit - let Railway handle it
 });
+
+// Railway connection monitoring
+setInterval(() => {
+    console.log(`✓ Server health check - Uptime: ${Math.floor(process.uptime())}s, Sessions: ${deviceSessions.size}, Tokens: ${activeTokens.size}`);
+}, 30000); // Every 30 seconds
