@@ -11,7 +11,8 @@ const PORT = process.env.PORT || 3000;
 const API_SECRET = process.env.API_SECRET || 'brook-sh-internal-api-key-2024';
 
 // Device and session management
-let deviceSessions = new Map(); // In production, use Redis/database
+let deviceSessions = new Map();
+let activeTokens = new Map();
 
 // Generate device fingerprint
 function generateDeviceFingerprint(req) {
@@ -50,6 +51,9 @@ function createDeviceSession(uid, deviceFingerprint, rememberDevice = false) {
     // Clean up expired sessions
     cleanupExpiredSessions();
     
+    // Save to file
+    saveSessions();
+    
     return { sessionId, sessionToken };
 }
 
@@ -64,23 +68,27 @@ function validateDeviceSession(sessionId, sessionToken, deviceFingerprint) {
     // Check if session expired
     if (Date.now() > session.expiresAt) {
         deviceSessions.delete(sessionId);
+        saveSessions();
         return null;
     }
     
     // Check if device fingerprint matches
     if (session.deviceFingerprint !== deviceFingerprint) {
         deviceSessions.delete(sessionId);
+        saveSessions();
         return null;
     }
     
     // Check if session token matches
     if (session.sessionToken !== sessionToken) {
         deviceSessions.delete(sessionId);
+        saveSessions();
         return null;
     }
     
     // Update last used
     session.lastUsed = Date.now();
+    saveSessions();
     
     return session.uid;
 }
@@ -88,16 +96,22 @@ function validateDeviceSession(sessionId, sessionToken, deviceFingerprint) {
 // Clean up expired sessions
 function cleanupExpiredSessions() {
     const now = Date.now();
+    let cleaned = false;
     for (let [sessionId, session] of deviceSessions) {
         if (now > session.expiresAt) {
             deviceSessions.delete(sessionId);
+            cleaned = true;
         }
+    }
+    if (cleaned) {
+        saveSessions();
     }
 }
 
 // Revoke device session (for logout)
 function revokeDeviceSession(sessionId) {
     deviceSessions.delete(sessionId);
+    saveSessions();
 }
 
 // Load API data
@@ -163,8 +177,6 @@ function generateSecureToken(uid) {
 }
 
 // Parse token to get UID (you'll need to store token-to-UID mapping)
-let activeTokens = new Map(); // In production, use Redis or database
-
 function createUserToken(uid) {
     const token = generateSecureToken(uid);
     activeTokens.set(token, { uid, created: Date.now() });
@@ -176,6 +188,9 @@ function createUserToken(uid) {
             activeTokens.delete(key);
         }
     }
+    
+    // Save to file
+    saveSessions();
     
     return token;
 }
@@ -222,8 +237,12 @@ async function fetchInternalAPI() {
     }
 }
 
-// Serve static files (but block api-data.json)
+// Serve static files (but block sensitive files)
 app.use('/api-data.json', (req, res) => {
+    res.status(403).json({ error: 'Access denied' });
+});
+
+app.use('/sessions.json', (req, res) => {
     res.status(403).json({ error: 'Access denied' });
 });
 
