@@ -353,7 +353,7 @@
                 <div class="avatar">{{AVATAR_LETTER}}</div>
                 <span>{{DISPLAY_USERNAME}}</span>
             </div>
-            <a href="#" class="logout-btn" onclick="logout()">Logout</a>
+            <a href="#" class="logout-btn" id="logout-btn">Logout</a>
         </div>
     </header>
 
@@ -539,26 +539,62 @@
     </div>
 
     <script>
-        function logout() {
-    // Clear localStorage
-    localStorage.removeItem('brook_auth_token');
-    localStorage.removeItem('brook_username');
-    
-    // Redirect to login
-    window.location.href = '/login';
-}
-
-// Auto-redirect if no token in localStorage
-const savedToken = localStorage.getItem('brook_auth_token');
-if (!savedToken) {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tokenFromURL = urlParams.get('token');
-    
-    if (tokenFromURL) {
-        // Save token to localStorage for next time
-        localStorage.setItem('brook_auth_token', tokenFromURL);
+// Logout function
+async function logout() {
+    try {
+        // Get session data
+        const sessionId = localStorage.getItem('brook_session_id');
+        
+        // Call logout endpoint
+        if (sessionId) {
+            await fetch('/auth/logout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId: sessionId })
+            });
+        }
+        
+        // Clear ALL local storage
+        localStorage.clear();
+        
+        // Clear ALL session storage
+        sessionStorage.clear();
+        
+        // Force page reload and redirect
+        window.location.href = '/';
+        
+    } catch (error) {
+        console.error('Logout error:', error);
+        
+        // Even if logout call fails, clear local storage
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '/';
     }
 }
+
+// Add logout button click handler
+document.addEventListener('DOMContentLoaded', function() {
+    const logoutBtn = document.querySelector('#logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+    }
+});
+
+        // Auto-redirect if no token in localStorage
+        const savedToken = localStorage.getItem('brook_auth_token');
+        if (!savedToken) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tokenFromURL = urlParams.get('token');
+            
+            if (tokenFromURL) {
+                // Save token to localStorage for next time
+                localStorage.setItem('brook_auth_token', tokenFromURL);
+            }
+        }
 
         // Simple JavaScript to update UI elements (server will replace the placeholders)
         document.addEventListener('DOMContentLoaded', function() {

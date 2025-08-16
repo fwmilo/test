@@ -1462,5 +1462,65 @@
         
         // If badges are added dynamically, call updateBadgeLayout() after adding them
     </script>
+
+    <!-- Replace the existing auto-login script with this improved version: -->
+
+<script>
+    // Check device session instead of direct token
+    const sessionId = localStorage.getItem('brook_session_id');
+    const sessionData = localStorage.getItem('brook_session');
+    const savedUsername = localStorage.getItem('brook_username');
+    
+    if (sessionId && sessionData && savedUsername) {
+        try {
+            const session = JSON.parse(atob(sessionData));
+            
+            fetch('/auth/verify-device', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    sessionId: sessionId,
+                    sessionToken: session.sessionToken
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.valid) {
+                    // User has valid device session, show username
+                    const authLink = document.querySelector('#auth-link') || document.querySelector('a[href="/login"]');
+                    if (authLink) {
+                        authLink.textContent = '@' + savedUsername;
+                        authLink.href = '/account';
+                        authLink.style.color = '#36038f';
+                        authLink.style.fontWeight = '600';
+                    }
+                } else {
+                    // Session expired or invalid, clear EVERYTHING
+                    clearAllSessionData();
+                }
+            })
+            .catch(error => {
+                // Error checking session, clear everything
+                clearAllSessionData();
+            });
+        } catch (error) {
+            clearAllSessionData();
+        }
+    }
+    
+    // Function to clear all session data
+    function clearAllSessionData() {
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        const authLink = document.querySelector('#auth-link') || document.querySelector('a[href="/login"]');
+        if (authLink) {
+            authLink.textContent = 'Login';
+            authLink.href = '/login';
+            authLink.style.color = '';
+            authLink.style.fontWeight = '';
+        }
+    }
+</script>
 </body>
 </html>

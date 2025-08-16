@@ -451,6 +451,12 @@
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             clearMessages();
+            
+            // Disable form during submission
+            const submitBtn = loginForm.querySelector('.submit-btn');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Signing in...';
 
             const formData = new FormData(loginForm);
             const data = {
@@ -469,32 +475,37 @@
                 const result = await response.json();
 
                 if (response.ok) {
-                    // Store secure session data (not the actual auth token)
+                    // Clear any existing session data first
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    
+                    // Store new session data
                     localStorage.setItem('brook_session_id', result.sessionId);
                     
-                    // Store session token in more secure httpOnly-like storage
-                    // We'll use a more secure method for the session token
                     const secureStorage = {
                         sessionToken: result.sessionToken,
                         username: result.username,
                         deviceTrusted: data.rememberDevice
                     };
                     
-                    // Encrypt and store session data
                     localStorage.setItem('brook_session', btoa(JSON.stringify(secureStorage)));
-                    
-                    // Store username for display
                     localStorage.setItem('brook_username', result.username);
                     
-                    showSuccess('Login successful! Welcome back! Redirecting...');
+                    showSuccess('Login successful! Welcome back!');
+                    
+                    // Redirect after a short delay
                     setTimeout(() => {
-                        window.location.href = result.redirectUrl;
-                    }, 1500);
+                        window.location.href = '/account';
+                    }, 1000);
                 } else {
                     showError(result.error);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
                 }
             } catch (error) {
                 showError('Network error. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             }
         });
 

@@ -983,15 +983,29 @@ app.post('/auth/verify-device', async (req, res) => {
     }
 });
 
-// Add logout route to revoke device session
-app.post('/auth/logout', (req, res) => {
+// Logout route - clear device session and tokens
+app.post('/auth/logout', async (req, res) => {
     const { sessionId } = req.body;
     
+    console.log(`Logout request for session: ${sessionId}`);
+    
     if (sessionId) {
-        revokeDeviceSession(sessionId);
+        // Remove device session
+        deviceSessions.delete(sessionId);
+        
+        // Also remove any active tokens for this session
+        for (let [token, tokenData] of activeTokens) {
+            // If we can match the session to tokens, remove them
+            activeTokens.delete(token);
+        }
+        
+        // Save updated sessions
+        saveSessions();
+        
+        console.log(`Session ${sessionId} logged out successfully`);
     }
     
-    res.json({ success: true });
+    res.json({ success: true, message: 'Logged out successfully' });
 });
 
 // Start server with error handling
