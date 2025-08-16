@@ -6,6 +6,7 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+<<<<<<< HEAD
 // Database file paths (separate sensitive data)
 const USERS_PATH = path.join(__dirname, 'data', 'users.json');
 const CREDENTIALS_PATH = path.join(__dirname, 'data', 'credentials.json');
@@ -67,10 +68,15 @@ function saveCredentials(credentials) {
 // Initialize data from databases
 let users = loadUsers();
 let credentials = loadCredentials();
+=======
+// In-memory storage for users (no database needed)
+const users = [];
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
 
 // Middleware
 app.use(express.json());
 
+<<<<<<< HEAD
 // Block access to data directory
 app.use('/data', (req, res) => {
     res.status(403).json({ error: 'Access denied' });
@@ -83,6 +89,9 @@ app.use(express.static('.', {
     redirect: false
 }));
 
+=======
+// MOVE THESE ROUTES TO THE TOP - BEFORE /:username
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
 // Serve main page
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
@@ -108,7 +117,11 @@ app.get('/auth/check-username/:username', (req, res) => {
         return res.json({ available: false, reason: 'Invalid characters' });
     }
 
+<<<<<<< HEAD
     const reservedUsernames = ['admin', 'api', 'www', 'mail', 'ftp', 'login', 'register', 'auth', 'user', 'data'];
+=======
+    const reservedUsernames = ['admin', 'api', 'www', 'mail', 'ftp', 'login', 'register', 'auth', 'user'];
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
     if (reservedUsernames.includes(username.toLowerCase())) {
         return res.json({ available: false, reason: 'Reserved username' });
     }
@@ -122,6 +135,7 @@ app.get('/auth/check-username/:username', (req, res) => {
     res.json({ available: true });
 });
 
+<<<<<<< HEAD
 // Login route
 app.post('/auth/login', (req, res) => {
     const { email, password } = req.body;
@@ -157,6 +171,8 @@ app.post('/auth/login', (req, res) => {
     });
 });
 
+=======
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
 // Register route
 app.post('/auth/register', (req, res) => {
     const { username, email, password } = req.body;
@@ -176,18 +192,27 @@ app.post('/auth/register', (req, res) => {
         return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
+<<<<<<< HEAD
     // Check for duplicates in users
+=======
+    // Check for duplicates
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
     const existingUsername = users.find(user => user.username.toLowerCase() === username.toLowerCase());
     if (existingUsername) {
         return res.status(400).json({ error: 'Username already taken' });
     }
 
+<<<<<<< HEAD
     // Check for duplicates in credentials
     const existingEmail = credentials.find(cred => cred.email.toLowerCase() === email.toLowerCase());
+=======
+    const existingEmail = users.find(user => user.email.toLowerCase() === email.toLowerCase());
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
     if (existingEmail) {
         return res.status(400).json({ error: 'Email already registered' });
     }
 
+<<<<<<< HEAD
     // Generate new UID
     const newUID = users.length + 1;
 
@@ -217,6 +242,21 @@ app.post('/auth/register', (req, res) => {
     saveCredentials(credentials);
     
     console.log(`New user registered: ${username} (UID: ${newUID})`);
+=======
+    // Create user
+    const newUser = {
+        id: users.length + 1,
+        username: username.toLowerCase(),
+        displayName: username,
+        email: email.toLowerCase(),
+        password: password,
+        createdAt: new Date(),
+        profileViews: 0
+    };
+
+    users.push(newUser);
+    console.log(`New user registered: ${username}`);
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
 
     res.status(201).json({
         message: 'Account created successfully',
@@ -225,6 +265,7 @@ app.post('/auth/register', (req, res) => {
     });
 });
 
+<<<<<<< HEAD
 // Update alias route (for future use)
 app.put('/auth/update-alias', (req, res) => {
     const { username, newAlias, token } = req.body;
@@ -252,11 +293,18 @@ app.put('/auth/update-alias', (req, res) => {
 });
 
 // User profile page
+=======
+// User profile page - MOVE THIS TO THE BOTTOM
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
 app.get('/:username', (req, res) => {
     const { username } = req.params;
     
     // Skip static files AND reserved routes
+<<<<<<< HEAD
     if (username.includes('.') || username === 'auth' || username === 'user' || username === 'login' || username === 'data') {
+=======
+    if (username.includes('.') || username === 'auth' || username === 'user' || username === 'login') {
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
         return res.status(404).send('Not found');
     }
     
@@ -271,6 +319,7 @@ app.get('/:username', (req, res) => {
         `);
     }
 
+<<<<<<< HEAD
     // Increment profile views and save to database
     user.profileViews++;
     user.lastUpdated = new Date().toISOString();
@@ -279,13 +328,23 @@ app.get('/:username', (req, res) => {
     const daysSinceCreation = Math.floor((Date.now() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24));
 
     // Generate profile page with tooltip on username
+=======
+    // Increment profile views
+    user.profileViews++;
+
+    // Generate profile page
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
     res.send(`
         <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
             <title>@${user.alias} - Brook.sh</title>
+=======
+            <title>@${user.displayName} - Brook.sh</title>
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
             <link rel="icon" type="image/png" href="https://i.postimg.cc/VLhBBn9h/void-animated.png">
             <style>
                 body {
@@ -327,6 +386,7 @@ app.get('/:username', (req, res) => {
                     font-size: 48px;
                     margin-bottom: 20px;
                     filter: drop-shadow(#36038f 0 0 4px);
+<<<<<<< HEAD
                     position: relative;
                     cursor: pointer;
                 }
@@ -373,6 +433,9 @@ app.get('/:username', (req, res) => {
                     opacity: 1;
                 }
                 
+=======
+                }
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
                 .stats {
                     display: flex;
                     justify-content: space-around;
@@ -417,20 +480,33 @@ app.get('/:username', (req, res) => {
                 </video>
             </div>
             <div class="profile-container">
+<<<<<<< HEAD
                 <div class="username">@${user.alias}</div>
                 <p>Welcome to ${user.alias}'s profile!</p>
+=======
+                <div class="username">@${user.displayName}</div>
+                <p>Welcome to ${user.displayName}'s profile!</p>
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
                 <div class="stats">
                     <div class="stat-item">
                         <div class="stat-value">${user.profileViews}</div>
                         <div class="stat-label">Views</div>
                     </div>
                     <div class="stat-item">
+<<<<<<< HEAD
                         <div class="stat-value">${daysSinceCreation}</div>
+=======
+                        <div class="stat-value">${Math.floor((Date.now() - user.createdAt) / (1000 * 60 * 60 * 24))}</div>
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
                         <div class="stat-label">Days</div>
                     </div>
                 </div>
                 <p style="font-size: 12px; color: rgba(255, 255, 255, 0.5); margin-bottom: 20px;">
+<<<<<<< HEAD
                     Member since ${new Date(user.createdAt).toLocaleDateString()}
+=======
+                    Member since ${user.createdAt.toLocaleDateString()}
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
                 </p>
                 <a href="/" class="back-home">← Back to Home</a>
             </div>
@@ -443,4 +519,8 @@ app.listen(PORT, () => {
     console.log(`Server running on http://localhost:3000`);
     console.log(`Login page: http://localhost:3000/login`);
     console.log(`Total users: ${users.length}`);
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> 2cdf5a8b417ddd2df659c2f5c4bb5f9665faaaa2
