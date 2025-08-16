@@ -36,7 +36,7 @@ function generateDeviceFingerprint(req) {
     return fingerprint;
 }
 
-// Create secure device session
+// Create secure device session - NON-BLOCKING VERSION
 function createDeviceSession(uid, deviceFingerprint, rememberDevice = false) {
     const sessionId = crypto.randomBytes(32).toString('hex');
     const sessionToken = crypto.randomBytes(32).toString('hex');
@@ -55,11 +55,12 @@ function createDeviceSession(uid, deviceFingerprint, rememberDevice = false) {
     
     deviceSessions.set(sessionId, sessionData);
     
-    // Clean up expired sessions
-    cleanupExpiredSessions();
+    // Clean up expired sessions asynchronously
+    setImmediate(() => {
+        cleanupExpiredSessions();
+    });
     
-    // Save sessions to file
-    saveSessions();
+    // Don't save sessions synchronously here - let caller handle it
     
     return { sessionId, sessionToken };
 }
@@ -160,13 +161,14 @@ function loadAPIData() {
 }
 
 // Save API data
-function saveAPIData(data) {
+async function saveAPIData(data) {
     try {
         const apiDataPath = path.join(__dirname, 'api-data.json');
-        fs.writeFileSync(apiDataPath, JSON.stringify(data, null, 2), 'utf8');
+        await fs.promises.writeFile(apiDataPath, JSON.stringify(data, null, 2), 'utf8');
         console.log('API data saved successfully');
     } catch (error) {
         console.error('Error saving API data:', error);
+        // Don't throw - just log the error
     }
 }
 
@@ -220,18 +222,21 @@ function loadSessions() {
     }
 }
 
-// Save sessions to file
-function saveSessions() {
+// Save sessions to file - ASYNC VERSION
+async function saveSessions() {
     try {
         const sessionsPath = path.join(__dirname, 'sessions.json');
         const data = {
             deviceSessions: Array.from(deviceSessions.entries()),
             activeTokens: Array.from(activeTokens.entries())
         };
-        fs.writeFileSync(sessionsPath, JSON.stringify(data, null, 2), 'utf8');
+        
+        // Use async write to prevent blocking
+        await fs.promises.writeFile(sessionsPath, JSON.stringify(data, null, 2), 'utf8');
         console.log('Sessions saved successfully');
     } catch (error) {
         console.error('Error saving sessions:', error);
+        // Don't throw - just log the error
     }
 }
 
@@ -537,7 +542,7 @@ app.get('/account', async (req, res) => {
     }
 });
 
-// Replace the existing login route (around line 400) with this fixed version:
+// Replace the login route (around line 550) with this optimized version:
 
 app.post('/auth/login', async (req, res) => {
     const { email, password, rememberDevice } = req.body;
@@ -574,15 +579,21 @@ app.post('/auth/login', async (req, res) => {
         // Create temporary display token
         const tempToken = createUserToken(user.uid);
 
-        // Send response that matches what login.html expects
+        // Send response IMMEDIATELY - don't wait for saves
         res.json({
             message: 'Login successful',
             token: tempToken,
             username: user.username,
             sessionId: sessionId,
             sessionToken: sessionToken,
-            redirectUrl: `/account`  // This is what login.html expects
+            redirectUrl: `/account`
         });
+
+        // Save sessions asynchronously AFTER response is sent
+        saveSessions().catch(error => {
+            console.error('Background session save failed:', error);
+        });
+
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ error: 'Login failed' });
@@ -1027,23 +1038,25 @@ app.listen(PORT, '0.0.0.0', (err) => {
     console.log(`✓ Sessions loaded: ${deviceSessions.size} device sessions, ${activeTokens.size} tokens`);
 });
 
-// Add global error handlers
+// Add global error handlers - DON'T EXIT IMMEDIATELY
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
     console.error('Stack:', error.stack);
+    // Don't exit immediately - let Railway handle it
 });
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Don't exit immediately - let Railway handle it
 });
 
-// Handle graceful shutdown
+// Handle graceful shutdown - REMOVE THE IMMEDIATE EXIT
 process.on('SIGTERM', () => {
     console.log('SIGTERM received, shutting down gracefully');
-    process.exit(0);
+    // Let Railway handle the shutdown - don't force exit
 });
 
 process.on('SIGINT', () => {
     console.log('SIGINT received, shutting down gracefully');
-    process.exit(0);
+    // Let Railway handle the shutdown - don't force exit
 });
