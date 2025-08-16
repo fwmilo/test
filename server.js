@@ -123,15 +123,25 @@ app.get('/account', requireAuth, (req, res) => {
     const user = req.user;
     const daysSinceCreation = Math.floor((Date.now() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24));
     
-    // Serve account.html with user data injected
+    // Read the account template
     let accountHtml = fs.readFileSync(path.join(__dirname, 'account.html'), 'utf8');
     
-    // Replace placeholders with real user data
-    accountHtml = accountHtml.replace('void', user.username);
-    accountHtml = accountHtml.replace('@void', `@${user.username}`);
-    accountHtml = accountHtml.replace('V', user.username.charAt(0).toUpperCase());
-    accountHtml = accountHtml.replace('42', user.profileViews);
-    accountHtml = accountHtml.replace('1', user.uid);
+    // Create template variables
+    const templateVars = {
+        '{{USERNAME}}': user.username,
+        '{{DISPLAY_USERNAME}}': `@${user.username}`,
+        '{{AVATAR_LETTER}}': user.username.charAt(0).toUpperCase(),
+        '{{USER_UID}}': user.uid,
+        '{{PROFILE_VIEWS}}': user.profileViews,
+        '{{MEMBER_SINCE}}': new Date(user.createdAt).toLocaleDateString(),
+        '{{PROFILE_LINK}}': `/${user.username}`,
+        '{{DAYS_SINCE_CREATION}}': daysSinceCreation
+    };
+    
+    // Replace all template variables
+    Object.keys(templateVars).forEach(key => {
+        accountHtml = accountHtml.replace(new RegExp(key, 'g'), templateVars[key]);
+    });
     
     res.send(accountHtml);
 });

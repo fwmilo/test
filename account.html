@@ -350,8 +350,8 @@
         </a>
         <div class="user-menu">
             <div class="user-info">
-                <div class="avatar">V</div>
-                <span>@void</span>
+                <div class="avatar">{{AVATAR_LETTER}}</div>
+                <span>{{DISPLAY_USERNAME}}</span>
             </div>
             <a href="/login" class="logout-btn">Logout</a>
         </div>
@@ -390,7 +390,7 @@
                     </svg>
                     Customize
                 </a>
-                <a href="/void" class="nav-item" id="profile-link">
+                <a href="{{PROFILE_LINK}}" class="nav-item" id="profile-link">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M11 6a1 1 0 1 1 0 2H5v11h11v-6a1 1 0 1 1 2 0v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zm9-3a1 1 0 0 1 1 1v5a1 1 0 1 1-2 0V6.414l-8.293 8.293a1 1 0 0 1-1.414-1.414L17.586 5H15a1 1 0 1 1 0-2Z"/>
                     </svg>
@@ -413,7 +413,7 @@
                         <h3 class="stat-title">Username</h3>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-value" id="username-display">void</div>
+                        <div class="stat-value" id="username-display">{{USERNAME}}</div>
                         <div class="stat-subtitle can-edit">Change available now</div>
                     </div>
                 </div>
@@ -426,7 +426,7 @@
                         <h3 class="stat-title">UID</h3>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-value" id="uid-display">1</div>
+                        <div class="stat-value" id="uid-display">{{USER_UID}}</div>
                         <div class="stat-subtitle" id="uid-subtitle">First user registered</div>
                     </div>
                 </div>
@@ -439,7 +439,7 @@
                         <h3 class="stat-title">Profile Views</h3>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-value" id="views-display">42</div>
+                        <div class="stat-value" id="views-display">{{PROFILE_VIEWS}}</div>
                         <div class="stat-subtitle">+5 views since last 7 days</div>
                     </div>
                 </div>
@@ -453,7 +453,7 @@
                     </div>
                     <div class="stat-content">
                         <div class="stat-value">Active</div>
-                        <div class="stat-subtitle" id="member-since">Member since today</div>
+                        <div class="stat-subtitle" id="member-since">Member since {{MEMBER_SINCE}}</div>
                     </div>
                 </div>
             </div>
@@ -526,7 +526,7 @@
                             </svg>
                             Customize Profile
                         </a>
-                        <a href="/void" class="action-btn" id="view-profile-btn">
+                        <a href="{{PROFILE_LINK}}" class="action-btn" id="view-profile-btn">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M11 6a1 1 0 1 1 0 2H5v11h11v-6a1 1 0 1 1 2 0v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zm9-3a1 1 0 0 1 1 1v5a1 1 0 1 1-2 0V6.414l-8.293 8.293a1 1 0 0 1-1.414-1.414L17.586 5H15a1 1 0 1 1 0-2Z"/>
                             </svg>
