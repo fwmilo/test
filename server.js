@@ -551,9 +551,10 @@ app.post('/auth/login', async (req, res) => {
     }
 });
 
-// Update the register route to return clean redirect URL
+// Replace the register route with this fixed version:
+
 app.post('/auth/register', async (req, res) => {
-    const { username, email, password } = req.body;
+    const { username, email, password, rememberDevice } = req.body;
     const usernameNormalized = username.toLowerCase();
     
     console.log(`Registration attempt: ${usernameNormalized} (${email})`);
@@ -608,13 +609,20 @@ app.post('/auth/register', async (req, res) => {
         
         console.log(`New user registered: ${usernameNormalized} (UID: ${newUID})`);
 
-        const token = createUserToken(newUID);
+        // Generate device fingerprint and create secure session (same as login)
+        const deviceFingerprint = generateDeviceFingerprint(req);
+        const { sessionId, sessionToken } = createDeviceSession(newUID, deviceFingerprint, rememberDevice);
+
+        // Create temporary display token
+        const tempToken = createUserToken(newUID);
 
         res.status(201).json({
             message: 'Account created successfully',
-            token: token,
+            token: tempToken,
             username: newUser.username,
-            redirectUrl: `/account`  // Clean URL without token
+            sessionId: sessionId,
+            sessionToken: sessionToken,
+            redirectUrl: `/account`
         });
     } catch (error) {
         console.error('Registration error:', error);
@@ -955,6 +963,40 @@ app.post('/auth/logout', (req, res) => {
     
     res.json({ success: true });
 });
+
+// Load sessions from file
+function loadSessions() {
+    try {
+        const sessionsPath = path.join(__dirname, 'sessions.json');
+        if (fs.existsSync(sessionsPath)) {
+            const data = JSON.parse(fs.readFileSync(sessionsPath, 'utf8'));
+            deviceSessions = new Map(data.deviceSessions || []);
+            activeTokens = new Map(data.activeTokens || []);
+            console.log(`Loaded ${deviceSessions.size} device sessions and ${activeTokens.size} active tokens`);
+        }
+    } catch (error) {
+        console.error('Error loading sessions:', error);
+        deviceSessions = new Map();
+        activeTokens = new Map();
+    }
+}
+
+// Save sessions to file
+function saveSessions() {
+    try {
+        const sessionsPath = path.join(__dirname, 'sessions.json');
+        const data = {
+            deviceSessions: Array.from(deviceSessions.entries()),
+            activeTokens: Array.from(activeTokens.entries())
+        };
+        fs.writeFileSync(sessionsPath, JSON.stringify(data, null, 2), 'utf8');
+    } catch (error) {
+        console.error('Error saving sessions:', error);
+    }
+}
+
+// Load sessions on startup
+loadSessions();
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);

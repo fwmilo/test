@@ -304,6 +304,12 @@
                 <input type="password" id="registerPassword" name="password" placeholder="Create a secure password" 
                        minlength="6" required>
             </div>
+            <div class="remember-device">
+                <label>
+                    <input type="checkbox" name="rememberDevice" id="rememberDeviceReg">
+                    <span>Remember this device for 30 days</span>
+                </label>
+            </div>
             <button type="submit" class="submit-btn" id="registerBtn">Create Account</button>
         </form>
 
@@ -497,7 +503,12 @@
             clearMessages();
 
             const formData = new FormData(registerForm);
-            const data = Object.fromEntries(formData);
+            const data = {
+                username: formData.get('username'),
+                email: formData.get('email'),
+                password: formData.get('password'),
+                rememberDevice: formData.get('rememberDevice') === 'on'
+            };
 
             try {
                 const response = await fetch('/auth/register', {
@@ -509,8 +520,16 @@
                 const result = await response.json();
 
                 if (response.ok) {
-                    // Store token and username in localStorage for persistent login
-                    localStorage.setItem('brook_auth_token', result.token);
+                    // Store secure session data (same as login)
+                    localStorage.setItem('brook_session_id', result.sessionId);
+                    
+                    const secureStorage = {
+                        sessionToken: result.sessionToken,
+                        username: result.username,
+                        deviceTrusted: data.rememberDevice
+                    };
+                    
+                    localStorage.setItem('brook_session', btoa(JSON.stringify(secureStorage)));
                     localStorage.setItem('brook_username', result.username);
                     
                     showSuccess('Account created! Welcome to Brook.sh! Redirecting...');
