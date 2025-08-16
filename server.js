@@ -1164,8 +1164,6 @@ process.on('unhandledRejection', (reason, promise) => {
 // Railway connection monitoring
 setInterval(() => {
     console.log(`✓ Server health check - Uptime: ${Math.floor(process.uptime())}s, Sessions: ${deviceSessions.size}, Tokens: ${activeTokens.size}`);
-}, 30000); // Every 30 seconds/ /  
- F o r c e  
- d e p l o y  
- c o m m e n t  
- 
+}, 30000); // Every 30 seconds
+
+console.log('🚀 Brook.sh server initialization complete');
